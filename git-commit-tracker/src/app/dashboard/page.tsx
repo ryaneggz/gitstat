@@ -10,6 +10,7 @@ import {
 } from "@/components/date-range-picker";
 import { TimelineChart } from "@/components/timeline-chart";
 import { VelocityMetrics } from "@/components/velocity-metrics";
+import { ExportButton } from "@/components/export-button";
 import { fetchCommits } from "@/app/actions/commits";
 import { fetchRepositories } from "@/app/actions/repositories";
 import type { Commit, Repository } from "@/lib/github";
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const [commits, setCommits] = React.useState<Commit[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [reposLoading, setReposLoading] = React.useState(true);
+  const chartRef = React.useRef<HTMLDivElement>(null);
 
   // Load repositories on mount
   React.useEffect(() => {
@@ -119,8 +121,11 @@ export default function DashboardPage() {
 
       {/* Timeline Chart Section */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Commit Timeline</CardTitle>
+          {selectedRepos.length > 0 && commits.length > 0 && !loading && (
+            <ExportButton targetRef={chartRef} filename="commitline-chart" />
+          )}
         </CardHeader>
         <CardContent className="relative">
           {reposLoading ? (
@@ -143,7 +148,9 @@ export default function DashboardPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               )}
-              <TimelineChart commits={commits} />
+              <div ref={chartRef}>
+                <TimelineChart commits={commits} />
+              </div>
             </div>
           )}
         </CardContent>
