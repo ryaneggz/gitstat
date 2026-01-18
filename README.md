@@ -140,11 +140,11 @@ netlify deploy --prod
    - `GITHUB_ID` - Your GitHub OAuth Client ID
    - `GITHUB_SECRET` - Your GitHub OAuth Client Secret
    - `NEXTAUTH_SECRET` - Your generated secret
-   - `NEXTAUTH_URL` - Your Netlify site URL (e.g., `https://your-site.netlify.app`)
+   - `NEXTAUTH_URL` - Your site URL (e.g., `https://gitstat.ruska.ai`)
 
 6. Update your GitHub OAuth App callback URL:
    - Go back to your [GitHub OAuth App settings](https://github.com/settings/developers)
-   - Update **Authorization callback URL** to: `https://your-site.netlify.app/api/auth/callback/github`
+   - Update **Authorization callback URL** to: `https://gitstat.ruska.ai/api/auth/callback/github`
 
 7. Trigger a redeploy from the Netlify dashboard
 

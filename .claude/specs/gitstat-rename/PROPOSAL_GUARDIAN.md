@@ -29,7 +29,7 @@ This rename operation requires careful coordination between application branding
 #### GitHub OAuth App
 - **Location:** https://github.com/settings/developers
 - **Current callback URL (assumed):** `https://[current-domain]/api/auth/callback/github`
-- **Impact:** If domain changes (e.g., from `commitline.netlify.app` to `gitstat.netlify.app`), the OAuth callback URL MUST be updated BEFORE users attempt to authenticate on the new domain.
+- **Impact:** If domain changes (e.g., from `commitline.netlify.app` to `gitstat.ruska.ai`), the OAuth callback URL MUST be updated BEFORE users attempt to authenticate on the new domain.
 - **Critical Window:** Between deploying to new domain and updating OAuth callback URL, authentication is completely broken.
 
 #### Netlify Deployment

@@ -141,7 +141,7 @@ Because in the momentum economy, the slope of the line matters more than the len
 
 Want to visualize your own commit momentum?
 
-- **Demo**: [https://gitstat.netlify.app](https://gitstat.netlify.app) *(Coming soon)*
+- **Demo**: [https://gitstat.ruska.ai](https://gitstat.ruska.ai)
 - **GitHub**: [https://github.com/ryaneggz/github-commit-tracker](https://github.com/ryaneggz/github-commit-tracker)
 - **Docs**: See the [README](https://github.com/ryaneggz/github-commit-tracker/blob/master/README.md) for setup instructions
 
