@@ -3,6 +3,7 @@
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 import { format, subDays, subYears, isAfter, startOfDay, endOfDay } from "date-fns";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -68,6 +69,7 @@ export function DateRangePicker({
   const [open, setOpen] = React.useState(false);
   const [activePreset, setActivePreset] = React.useState<PresetKey | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const isDesktop = useMediaQuery("(min-width: 640px)");
 
   const handlePresetClick = (key: PresetKey) => {
     setActivePreset(key);
@@ -152,7 +154,7 @@ export function DateRangePicker({
                     : undefined
                 }
                 onSelect={handleSelect}
-                numberOfMonths={2}
+                numberOfMonths={isDesktop ? 2 : 1}
                 disabled={{ after: new Date() }}
               />
             </div>
