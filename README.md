@@ -1,210 +1,212 @@
-# 📈 Product Requirements Document (PRD)
+# Commitline
 
-**Product Name (Working):** Commitline
-**Tagline:** *Show your momentum. Prove your compounding progress.*
+**Show your momentum. Prove your compounding progress.**
 
----
+Commitline transforms your GitHub commit history into a visual timeline of momentum, making exponential growth obvious and shareable.
 
-## 1. Problem Statement
+## Features
 
-Modern developers—especially those building in public—are shipping at an accelerating pace. Existing tools (GitHub graphs, contribution heatmaps) are:
+- **Timeline Visualization** - See your commits as a cumulative line chart over time, with emphasis on slope change (momentum)
+- **Velocity Metrics** - Track weekly/monthly commit rates and growth percentage vs prior periods
+- **Export & Share** - Export as PNG (optimized for social sharing) or generate public shareable links
+- **Repository Filtering** - Select which repositories to include in your visualization
+- **Date Range Presets** - Quick filters for 7 days, 30 days, 1 year, or custom date ranges
 
-* **Non-linear** and hard to interpret at a glance
-* **Not narrative-driven** (no story of momentum)
-* **Not designed for sharing** (social, portfolio, or recruiting)
+## Tech Stack
 
-Developers want a **clean, linear, and visually compelling way** to show how their productivity compounds over time.
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui
+- **Charts**: Recharts
+- **Authentication**: NextAuth.js with GitHub OAuth
+- **Export**: html2canvas for PNG generation
 
----
+## Getting Started
 
-## 2. Product Vision
+### Prerequisites
 
-Build a **lightweight, opinionated visualization app** that transforms Git commit history into a **linear timeline of momentum**, making exponential growth obvious and shareable.
+- Node.js 18+
+- npm or yarn
+- GitHub account
 
-This is not analytics-heavy.
-This is **signal > noise**.
+### Installation
 
----
-
-## 3. Goals & Success Metrics
-
-### Primary Goals
-
-* Make **exponential dev activity visually obvious**
-* Enable **one-click sharing** (image + link)
-* Encourage **building in public**
-
-### Success Metrics
-
-* % of users generating a shareable link
-* Social shares per user
-* Time-to-first-visualization (<60 seconds)
-* Returning users tracking growth weekly/monthly
-
----
-
-## 4. Target User & ICP
-
-### Ideal Customer Profile (ICP)
-
-#### Primary ICP: Builder-in-Public Developer
-
-* **Role:** Indie hacker, startup founder, OSS contributor, SWE
-* **Experience:** Junior → Senior
-* **Behavior:**
-
-  * Ships frequently
-  * Uses GitHub daily
-  * Shares progress on X, LinkedIn, Discord
-* **Pain Points:**
-
-  * GitHub contribution graph doesn’t tell a story
-  * Hard to show *rate of improvement*
-  * Wants social proof without bragging
-
-> “I *feel* like I’m shipping faster, but I can’t show it clearly.”
-
----
-
-#### Secondary ICP: Hiring-Focused Developer
-
-* **Role:** Job seeker, freelancer, consultant
-* **Goal:** Prove consistency and momentum
-* **Use Case:** Portfolio, resume link, recruiter follow-up
-
-> “I want my work ethic to be undeniable.”
-
----
-
-#### Tertiary ICP: Developer Influencer / Educator
-
-* **Role:** Content creator, community lead
-* **Use Case:** Teaching consistency, motivation, accountability
-
----
-
-## 5. Core User Journey
-
-1. **Authenticate with GitHub**
-2. Select:
-
-   * Repo(s)
-   * Time window (30 / 90 / 180 / All-time)
-3. App generates:
-
-   * Linear timeline of commits
-   * Growth curve (velocity & acceleration)
-4. User:
-
-   * Exports image
-   * Shares public link
-   * Optionally adds caption/annotation
-
----
-
-## 6. Core Features (MVP)
-
-### 6.1 Commit Timeline (Core)
-
-* X-axis: Time
-* Y-axis: Cumulative commits
-* Emphasis on **slope change** (momentum)
-* Smooth, minimal, dark-mode friendly
-
-### 6.2 Velocity Indicators
-
-* Weekly / monthly commit rate
-* % growth vs prior period
-* Optional “exponential highlight” zones
-
-### 6.3 Shareability
-
-* Public read-only link
-* PNG export optimized for X / LinkedIn
-* Minimal watermark or signature
-
-### 6.4 Repo Controls
-
-* Include / exclude repos
-* Ignore bots & merge commits
-* Timeframe presets
-
----
-
-## 7. Non-Goals (Explicitly Out of Scope)
-
-* Code quality analysis
-* Lines of code metrics
-* AI judgment or scoring
-* Team analytics (initially)
-
-This is **about momentum, not merit**.
-
----
-
-## 8. Tech Stack & Architecture
-
-### Frontend
-
-* **Next.js (App Router)**
-* **TypeScript**
-* **shadcn/ui**
-* Tailwind CSS
-* Recharts / Visx (for charts)
-* Server Components where possible
-
-### Backend
-
-* Next.js API routes
-* GitHub OAuth
-* GitHub GraphQL API
-* Lightweight caching (Redis / edge cache)
-
-### Data Model (Simplified)
-
-```ts
-CommitEvent {
-  date: Date
-  count: number
-  cumulative: number
-}
+```bash
+cd git-commit-tracker
+npm install
 ```
 
----
+### Environment Configuration
 
-## 9. UX Principles
+1. Copy the example environment file:
 
-* **Opinionated defaults**
-* **Zero configuration to value**
-* Dark-mode first
-* “Screenshot-ready” at all times
-* No dashboards, no clutter
+```bash
+cp .env.example .env.local
+```
 
----
+2. Create a GitHub OAuth App:
+   - Go to [GitHub Developer Settings](https://github.com/settings/developers)
+   - Click **OAuth Apps** > **New OAuth App**
+   - Fill in the application details:
+     - **Application name**: Commitline (or your preferred name)
+     - **Homepage URL**: `http://localhost:3000`
+     - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
+   - Click **Register application**
+   - Copy the **Client ID** and generate a new **Client Secret**
 
-## 10. Risks & Mitigations
+3. Generate a NextAuth secret:
 
-| Risk                         | Mitigation                         |
-| ---------------------------- | ---------------------------------- |
-| Vanity metrics perception    | Position as momentum & consistency |
-| GitHub API limits            | Cache + scoped queries             |
-| Misinterpretation of commits | Clear disclaimers & filters        |
+```bash
+openssl rand -base64 32
+```
 
----
+4. Update `.env.local` with your values:
 
-## 11. Future Extensions (Post-MVP)
+```bash
+# GitHub OAuth App credentials
+GITHUB_ID=your_github_client_id
+GITHUB_SECRET=your_github_client_secret
 
-* Streak overlays
-* Annotations (“Launched X”, “Refactor phase”)
-* Team views
-* Weekly digest emails
-* Embed widgets
+# NextAuth secret - the value you generated above
+NEXTAUTH_SECRET=your_generated_secret
 
----
+# NextAuth URL
+NEXTAUTH_URL=http://localhost:3000
+```
 
-## 12. Positioning Summary
+### Running Development Server
 
-**Commitline is not GitHub Analytics.**
-It’s a **visual proof of compounding effort**.
+```bash
+cd git-commit-tracker
+npm run dev
+```
 
-> *“Momentum is the real signal.”*
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Other Commands
+
+```bash
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+
+# Run linting
+npm run lint
+
+# Type check
+npx tsc --noEmit
+```
+
+## Deploying to Netlify
+
+### Option 1: Deploy via Netlify CLI
+
+1. Install Netlify CLI:
+
+```bash
+npm install -g netlify-cli
+```
+
+2. Build the project:
+
+```bash
+cd git-commit-tracker
+npm run build
+```
+
+3. Deploy:
+
+```bash
+netlify deploy --prod
+```
+
+### Option 2: Deploy via Netlify Dashboard
+
+1. Push your code to a GitHub repository
+
+2. Go to [Netlify](https://app.netlify.com) and click **Add new site** > **Import an existing project**
+
+3. Connect your GitHub repository
+
+4. Configure build settings:
+   - **Base directory**: `git-commit-tracker`
+   - **Build command**: `npm run build`
+   - **Publish directory**: `git-commit-tracker/.next`
+
+5. Add environment variables in **Site settings** > **Environment variables**:
+   - `GITHUB_ID` - Your GitHub OAuth Client ID
+   - `GITHUB_SECRET` - Your GitHub OAuth Client Secret
+   - `NEXTAUTH_SECRET` - Your generated secret
+   - `NEXTAUTH_URL` - Your Netlify site URL (e.g., `https://your-site.netlify.app`)
+
+6. Update your GitHub OAuth App callback URL:
+   - Go back to your [GitHub OAuth App settings](https://github.com/settings/developers)
+   - Update **Authorization callback URL** to: `https://your-site.netlify.app/api/auth/callback/github`
+
+7. Trigger a redeploy from the Netlify dashboard
+
+### Netlify Configuration File
+
+Create `netlify.toml` in the repository root for consistent deployments:
+
+```toml
+[build]
+  base = "git-commit-tracker"
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
+
+Install the Next.js plugin:
+
+```bash
+npm install -D @netlify/plugin-nextjs
+```
+
+## Project Structure
+
+```
+git-commit-tracker/
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── auth/[...nextauth]/  # NextAuth route handler
+│   │   │   └── share/               # Share link API
+│   │   ├── actions/                 # Server actions
+│   │   ├── dashboard/               # Protected dashboard
+│   │   ├── login/                   # Login page
+│   │   ├── share/[id]/              # Public share view
+│   │   └── page.tsx                 # Landing page
+│   ├── components/
+│   │   ├── ui/                      # shadcn/ui components
+│   │   ├── date-range-picker.tsx    # Date filtering
+│   │   ├── export-button.tsx        # PNG export
+│   │   ├── repo-selector.tsx        # Repository multi-select
+│   │   ├── share-button.tsx         # Share link generation
+│   │   ├── timeline-chart.tsx       # Commit timeline chart
+│   │   └── velocity-metrics.tsx     # Metrics cards
+│   ├── hooks/
+│   │   └── use-media-query.ts       # Responsive UI hook
+│   └── lib/
+│       ├── auth.ts                  # NextAuth configuration
+│       └── github.ts                # GitHub API client
+├── .env.example                     # Environment template
+└── package.json
+```
+
+## User Flow
+
+1. Sign in with GitHub OAuth
+2. Select repositories to visualize
+3. Choose a date range (presets or custom)
+4. View your commit timeline and velocity metrics
+5. Export as PNG or generate a shareable public link
+
+## License
+
+MIT
