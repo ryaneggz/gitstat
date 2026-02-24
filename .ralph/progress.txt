@@ -1,0 +1,18 @@
+# Ralph Progress Log
+Started: Mon Feb 23 20:32:14 MST 2026
+
+## Codebase Patterns
+- The `dev:agent` script in `gitstat-app/package.json` sets `NEXTAUTH_URL=http://localhost:3080` inline before `next dev -p 3080` — this is how port overrides work for NextAuth
+- NextAuth redirect behavior is controlled by the `NEXTAUTH_URL` env var; it must match the dev server port
+- JWT decryption errors on first load are stale cookie artifacts, not real issues
+---
+
+## 2026-02-23 - US-001
+- What was implemented: Verification only — no code changes needed. The `dev:agent` script already correctly sets `NEXTAUTH_URL=http://localhost:3080 next dev -p 3080` in package.json.
+- Verified: server starts on port 3080, browser loads http://localhost:3080, typecheck passes
+- Files changed: none (verification story)
+- **Learnings for future iterations:**
+  - The dev:agent script was already correctly configured in a prior iteration
+  - Use `curl -s -o /dev/null -w "%{http_code}"` to quickly verify server responses
+  - Browser verification with dev-browser skill confirms full page load
+---
