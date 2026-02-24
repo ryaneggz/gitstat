@@ -1,1 +1,1 @@
-_READ_ `./CLAUDE.md`
+AGENTS.md
