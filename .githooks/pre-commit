@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="gitstat"
+
+echo "==> Running lint..."
+cd "$APP_DIR"
+npm run lint
+
+echo "==> Running tests..."
+npm run test
+
+echo "==> Pre-commit checks passed."
