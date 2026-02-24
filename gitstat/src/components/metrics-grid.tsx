@@ -96,6 +96,14 @@ function ErrorCard({ title, error }: { title: string; error: string }) {
   );
 }
 
+/** Pre-computed demo data to bypass server action fetching */
+export interface DemoMetricData {
+  pullRequests: PullRequest[];
+  reviewTurnaround: ReviewTurnaround;
+  issueCloseRate: IssueCloseRate;
+  linesChanged: LinesChanged;
+}
+
 interface MetricsGridProps {
   /** Commits already fetched by the parent (shared with timeline chart) */
   commits: Commit[];
@@ -112,6 +120,8 @@ interface MetricsGridProps {
   previousDateRange?: DateRangeState;
   /** Which metric cards are visible (all visible if not provided) */
   visibleMetrics?: Set<MetricKey>;
+  /** Pre-computed demo data — when provided, skips all server action fetching */
+  demoData?: DemoMetricData;
 }
 
 export function MetricsGrid({
@@ -125,6 +135,7 @@ export function MetricsGrid({
   previousCommits,
   previousDateRange,
   visibleMetrics,
+  demoData,
 }: MetricsGridProps) {
   const isVisible = (key: MetricKey) => !visibleMetrics || visibleMetrics.has(key);
   const [prState, setPrState] = React.useState<MetricState<PullRequest[]>>(
@@ -154,7 +165,18 @@ export function MetricsGrid({
     initialState
   );
 
+  // Load demo data directly when provided
   React.useEffect(() => {
+    if (!demoData) return;
+    setPrState({ data: demoData.pullRequests, loading: false, error: null });
+    setReviewState({ data: demoData.reviewTurnaround, loading: false, error: null });
+    setIssueState({ data: demoData.issueCloseRate, loading: false, error: null });
+    setLinesState({ data: demoData.linesChanged, loading: false, error: null });
+  }, [demoData]);
+
+  React.useEffect(() => {
+    if (demoData) return; // Skip server action fetching in demo mode
+
     if (selectedRepos.length === 0) {
       setPrState(initialState());
       setReviewState(initialState());
@@ -209,7 +231,7 @@ export function MetricsGrid({
         setLinesState({ data: null, loading: false, error: result.error });
       }
     });
-  }, [selectedRepos, dateRange, repositories]);
+  }, [selectedRepos, dateRange, repositories, demoData]);
 
   // Fetch previous period metrics when comparison is enabled
   React.useEffect(() => {

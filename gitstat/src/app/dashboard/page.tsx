@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RepoSelector } from "@/components/repo-selector";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/date-range-picker";
 import { TimelineChart } from "@/components/timeline-chart";
 import { MetricsGrid } from "@/components/metrics-grid";
+import type { DemoMetricData } from "@/components/metrics-grid";
 import {
   MetricCustomizer,
   loadVisibleMetrics,
@@ -25,22 +27,41 @@ import { RepoBreakdown } from "@/components/repo-breakdown";
 import { ExportButton } from "@/components/export-button";
 import { ShareButton } from "@/components/share-button";
 import { SharePreview } from "@/components/share-preview";
+import { DemoBanner } from "@/components/demo-banner";
 import { fetchCommits } from "@/app/actions/commits";
 import { fetchRepositories } from "@/app/actions/repositories";
 import type { Commit, Repository } from "@/lib/github";
+import {
+  DEMO_REPOSITORIES,
+  DEMO_REPO_NAMES,
+  getDemoCommits,
+  getDemoPullRequests,
+  getDemoReviewTurnaround,
+  getDemoIssueCloseRate,
+  getDemoLinesChanged,
+} from "@/lib/demo-data";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function DashboardPage() {
-  const [selectedRepos, setSelectedRepos] = React.useState<string[]>([]);
-  const [repositories, setRepositories] = React.useState<Repository[]>([]);
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
+
+  const [selectedRepos, setSelectedRepos] = React.useState<string[]>(
+    isDemo ? DEMO_REPO_NAMES : []
+  );
+  const [repositories, setRepositories] = React.useState<Repository[]>(
+    isDemo ? DEMO_REPOSITORIES : []
+  );
   const [dateRange, setDateRange] = React.useState<DateRangeState>({
     from: undefined,
     to: undefined,
   });
-  const [commits, setCommits] = React.useState<Commit[]>([]);
+  const [commits, setCommits] = React.useState<Commit[]>(
+    isDemo ? getDemoCommits() : []
+  );
   const [loading, setLoading] = React.useState(false);
-  const [reposLoading, setReposLoading] = React.useState(true);
+  const [reposLoading, setReposLoading] = React.useState(!isDemo);
   const [error, setError] = React.useState<string | null>(null);
   const [compareEnabled, setCompareEnabled] = React.useState(false);
   const [previousCommits, setPreviousCommits] = React.useState<Commit[]>([]);
@@ -53,13 +74,28 @@ export default function DashboardPage() {
   });
   const chartRef = React.useRef<HTMLDivElement>(null);
 
+  const demoMetricData: DemoMetricData | undefined = React.useMemo(
+    () =>
+      isDemo
+        ? {
+            pullRequests: getDemoPullRequests(),
+            reviewTurnaround: getDemoReviewTurnaround(),
+            issueCloseRate: getDemoIssueCloseRate(),
+            linesChanged: getDemoLinesChanged(),
+          }
+        : undefined,
+    [isDemo]
+  );
+
   const previousDateRange = React.useMemo(
     () => (compareEnabled ? getPreviousPeriod(dateRange) : null),
     [compareEnabled, dateRange]
   );
 
-  // Load repositories on mount
+  // Load repositories on mount (skip in demo mode)
   React.useEffect(() => {
+    if (isDemo) return;
+
     async function loadRepositories() {
       setReposLoading(true);
       setError(null);
@@ -73,7 +109,7 @@ export default function DashboardPage() {
       setReposLoading(false);
     }
     loadRepositories();
-  }, []);
+  }, [isDemo]);
 
   // Load privacy settings when repositories are available
   React.useEffect(() => {
@@ -82,8 +118,10 @@ export default function DashboardPage() {
     }
   }, [repositories]);
 
-  // Fetch commits when repositories or date range changes
+  // Fetch commits when repositories or date range changes (skip in demo mode)
   React.useEffect(() => {
+    if (isDemo) return;
+
     async function loadCommits() {
       if (selectedRepos.length === 0) {
         setCommits([]);
@@ -114,10 +152,12 @@ export default function DashboardPage() {
     }
 
     loadCommits();
-  }, [selectedRepos, dateRange, repositories]);
+  }, [selectedRepos, dateRange, repositories, isDemo]);
 
-  // Fetch previous period commits when comparison is enabled
+  // Fetch previous period commits when comparison is enabled (skip in demo mode)
   React.useEffect(() => {
+    if (isDemo) return;
+
     if (!compareEnabled || !previousDateRange) {
       setPreviousCommits([]);
       return;
@@ -140,23 +180,27 @@ export default function DashboardPage() {
         setPreviousCommits([]);
       }
     });
-  }, [compareEnabled, previousDateRange, selectedRepos, repositories]);
+  }, [compareEnabled, previousDateRange, selectedRepos, repositories, isDemo]);
 
   return (
     <div className="space-y-6">
+      {isDemo && <DemoBanner />}
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Dashboard</h2>
-        <div className="flex items-center gap-1">
-          <PrivacySettingsPanel
-            repositories={repositories}
-            privacy={privacy}
-            onPrivacyChange={setPrivacy}
-          />
-          <MetricCustomizer
-            visibleMetrics={visibleMetrics}
-            onVisibilityChange={setVisibleMetrics}
-          />
-        </div>
+        {!isDemo && (
+          <div className="flex items-center gap-1">
+            <PrivacySettingsPanel
+              repositories={repositories}
+              privacy={privacy}
+              onPrivacyChange={setPrivacy}
+            />
+            <MetricCustomizer
+              visibleMetrics={visibleMetrics}
+              onVisibilityChange={setVisibleMetrics}
+            />
+          </div>
+        )}
       </div>
 
       {/* Rate Limit Error Alert */}
@@ -168,44 +212,46 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      {/* Filters Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Repositories</label>
-              <RepoSelector
-                selectedRepos={selectedRepos}
-                onSelectionChange={setSelectedRepos}
-              />
+      {/* Filters Section (hidden in demo mode) */}
+      {!isDemo && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Repositories</label>
+                <RepoSelector
+                  selectedRepos={selectedRepos}
+                  onSelectionChange={setSelectedRepos}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date Range</label>
+                <DateRangePicker
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  compareEnabled={compareEnabled}
+                  onCompareChange={setCompareEnabled}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date Range</label>
-              <DateRangePicker
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-                compareEnabled={compareEnabled}
-                onCompareChange={setCompareEnabled}
-              />
-            </div>
-          </div>
-          {selectedRepos.length > 0 && (
-            <div className="text-sm text-muted-foreground">
-              <p>
-                {selectedRepos.length === 1
-                  ? `1 repository selected`
-                  : `${selectedRepos.length} repositories selected`}
-                {dateRange.from || dateRange.to
-                  ? ` • ${dateRange.from?.toLocaleDateString() || "Any"} - ${dateRange.to?.toLocaleDateString() || "Any"}`
-                  : " • All time"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            {selectedRepos.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  {selectedRepos.length === 1
+                    ? `1 repository selected`
+                    : `${selectedRepos.length} repositories selected`}
+                  {dateRange.from || dateRange.to
+                    ? ` • ${dateRange.from?.toLocaleDateString() || "Any"} - ${dateRange.to?.toLocaleDateString() || "Any"}`
+                    : " • All time"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metric Cards Grid */}
       {selectedRepos.length > 0 && (
@@ -220,6 +266,7 @@ export default function DashboardPage() {
           previousCommits={previousCommits}
           previousDateRange={previousDateRange ?? undefined}
           visibleMetrics={visibleMetrics}
+          demoData={demoMetricData}
         />
       )}
 
@@ -227,7 +274,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Commit Timeline</CardTitle>
-          {selectedRepos.length > 0 && commits.length > 0 && !loading && (
+          {!isDemo && selectedRepos.length > 0 && commits.length > 0 && !loading && (
             <div className="flex items-center gap-2">
               <SharePreview
                 commits={commits}
@@ -278,8 +325,8 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
-      {/* Repo Breakdown Section */}
-      {selectedRepos.length > 0 && (
+      {/* Repo Breakdown Section (hidden in demo mode) */}
+      {!isDemo && selectedRepos.length > 0 && (
         <RepoBreakdown
           selectedRepos={selectedRepos}
           dateRange={dateRange}
