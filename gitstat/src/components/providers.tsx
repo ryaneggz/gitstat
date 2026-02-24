@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 /**
  * Toaster wrapper that reads theme from context
@@ -29,7 +30,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <SessionProvider>
-        {children}
+        <TooltipProvider>
+          {children}
+        </TooltipProvider>
         <ToasterWithTheme />
       </SessionProvider>
     </ThemeProvider>
