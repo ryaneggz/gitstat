@@ -16,6 +16,11 @@ import {
   loadVisibleMetrics,
   type MetricKey,
 } from "@/components/metric-customizer";
+import {
+  PrivacySettingsPanel,
+  loadPrivacySettings,
+  type PrivacySettings,
+} from "@/components/privacy-settings";
 import { RepoBreakdown } from "@/components/repo-breakdown";
 import { ExportButton } from "@/components/export-button";
 import { ShareButton } from "@/components/share-button";
@@ -42,6 +47,10 @@ export default function DashboardPage() {
   const [visibleMetrics, setVisibleMetrics] = React.useState<Set<MetricKey>>(
     () => loadVisibleMetrics()
   );
+  const [privacy, setPrivacy] = React.useState<PrivacySettings>({
+    shareableRepos: new Set(),
+    shareableMetrics: new Set(),
+  });
   const chartRef = React.useRef<HTMLDivElement>(null);
 
   const previousDateRange = React.useMemo(
@@ -65,6 +74,13 @@ export default function DashboardPage() {
     }
     loadRepositories();
   }, []);
+
+  // Load privacy settings when repositories are available
+  React.useEffect(() => {
+    if (repositories.length > 0) {
+      setPrivacy(loadPrivacySettings(repositories));
+    }
+  }, [repositories]);
 
   // Fetch commits when repositories or date range changes
   React.useEffect(() => {
@@ -130,10 +146,17 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Dashboard</h2>
-        <MetricCustomizer
-          visibleMetrics={visibleMetrics}
-          onVisibilityChange={setVisibleMetrics}
-        />
+        <div className="flex items-center gap-1">
+          <PrivacySettingsPanel
+            repositories={repositories}
+            privacy={privacy}
+            onPrivacyChange={setPrivacy}
+          />
+          <MetricCustomizer
+            visibleMetrics={visibleMetrics}
+            onVisibilityChange={setVisibleMetrics}
+          />
+        </div>
       </div>
 
       {/* Rate Limit Error Alert */}
@@ -211,8 +234,15 @@ export default function DashboardPage() {
                 selectedRepos={selectedRepos}
                 dateRange={dateRange}
                 repositories={repositories}
+                privacy={privacy}
               />
-              <ShareButton selectedRepos={selectedRepos} dateRange={dateRange} commits={commits} repositories={repositories} />
+              <ShareButton
+                selectedRepos={selectedRepos}
+                dateRange={dateRange}
+                commits={commits}
+                repositories={repositories}
+                privacy={privacy}
+              />
               <ExportButton targetRef={chartRef} filename="gitstat-chart" />
             </div>
           )}

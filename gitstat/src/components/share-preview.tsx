@@ -35,6 +35,7 @@ import { fetchPullRequests } from "@/app/actions/pull-requests";
 import { fetchReviewTurnaround } from "@/app/actions/reviews";
 import { fetchIssueCloseRate } from "@/app/actions/issues";
 import { fetchLinesChanged } from "@/app/actions/lines-changed";
+import type { PrivacySettings } from "@/components/privacy-settings";
 
 export type ShareTemplate = "stats-card" | "chart-snapshot";
 export type SharePlatform = "linkedin" | "x";
@@ -64,6 +65,7 @@ interface SharePreviewProps {
   selectedRepos: string[];
   dateRange: DateRangeState;
   repositories: Repository[];
+  privacy?: PrivacySettings;
 }
 
 /** Format date range as a short string for overlay */
@@ -89,6 +91,7 @@ export function SharePreview({
   selectedRepos,
   dateRange,
   repositories,
+  privacy,
 }: SharePreviewProps) {
   const { data: session } = useSession();
   const [open, setOpen] = React.useState(false);
@@ -106,6 +109,22 @@ export function SharePreview({
 
   const userName = session?.user?.name ?? undefined;
   const userImage = session?.user?.image ?? undefined;
+
+  // Filter repos by privacy settings — only shareable repos are used in exports
+  const shareableRepos = React.useMemo(
+    () =>
+      privacy
+        ? selectedRepos.filter((r) => privacy.shareableRepos.has(r))
+        : selectedRepos,
+    [selectedRepos, privacy]
+  );
+
+  /** Check if a metric key is eligible per privacy settings */
+  const isMetricEligible = React.useCallback(
+    (key: string): boolean =>
+      !privacy || privacy.shareableMetrics.has(key as never),
+    [privacy]
+  );
 
   // Commit-based metrics (always available from parent)
   const commitMetrics = React.useMemo((): ShareMetric[] => {
@@ -129,8 +148,9 @@ export function SharePreview({
   }, [commits]);
 
   const allMetrics = React.useMemo(
-    () => [...commitMetrics, ...extraMetrics],
-    [commitMetrics, extraMetrics]
+    () =>
+      [...commitMetrics, ...extraMetrics].filter((m) => isMetricEligible(m.key)),
+    [commitMetrics, extraMetrics, isMetricEligible]
   );
 
   // Initialize selected keys when metrics change
@@ -142,12 +162,12 @@ export function SharePreview({
   React.useEffect(() => {
     if (!open) return;
 
-    const depsKey = `${selectedRepos.join(",")}|${dateRange.from?.toISOString()}|${dateRange.to?.toISOString()}`;
+    const depsKey = `${shareableRepos.join(",")}|${dateRange.from?.toISOString()}|${dateRange.to?.toISOString()}`;
     if (fetchedDepsRef.current === depsKey) return;
     fetchedDepsRef.current = depsKey;
 
     const selectedFullNames = repositories
-      .filter((repo) => selectedRepos.includes(repo.name))
+      .filter((repo) => shareableRepos.includes(repo.name))
       .map((repo) => repo.fullName);
 
     if (selectedFullNames.length === 0) {
@@ -213,7 +233,7 @@ export function SharePreview({
       setExtraMetrics(extra);
       setFetchingExtra(false);
     });
-  }, [open, selectedRepos, dateRange, repositories]);
+  }, [open, shareableRepos, dateRange, repositories]);
 
   // Build cumulative chart data for Chart Snapshot template
   const chartData = React.useMemo((): ChartDataPoint[] => {
@@ -384,7 +404,7 @@ export function SharePreview({
                   userName={userName}
                   userImage={userImage}
                   dateOverlay={formatDateOverlay(dateRange)}
-                  repoNames={selectedRepos}
+                  repoNames={shareableRepos}
                 />
               ) : (
                 <ChartSnapshotPreview
@@ -393,7 +413,7 @@ export function SharePreview({
                   userName={userName}
                   userImage={userImage}
                   dateOverlay={formatDateOverlay(dateRange)}
-                  repoNames={selectedRepos}
+                  repoNames={shareableRepos}
                 />
               )}
             </div>

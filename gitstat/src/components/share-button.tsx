@@ -11,6 +11,7 @@ import { fetchPullRequests } from "@/app/actions/pull-requests";
 import { fetchReviewTurnaround } from "@/app/actions/reviews";
 import { fetchIssueCloseRate } from "@/app/actions/issues";
 import { fetchLinesChanged } from "@/app/actions/lines-changed";
+import type { PrivacySettings } from "@/components/privacy-settings";
 
 interface MetricSnapshot {
   totalCommits: number;
@@ -27,6 +28,7 @@ interface ShareButtonProps {
   dateRange: DateRangeState;
   commits: Commit[];
   repositories: Repository[];
+  privacy?: PrivacySettings;
   className?: string;
 }
 
@@ -39,6 +41,7 @@ export function ShareButton({
   dateRange,
   commits,
   repositories,
+  privacy,
   className,
 }: ShareButtonProps) {
   const [generating, setGenerating] = React.useState(false);
@@ -57,9 +60,23 @@ export function ShareButton({
     setShareUrl(null);
 
     try {
+      // Filter repos by privacy settings
+      const shareableRepos = privacy
+        ? selectedRepos.filter((r) => privacy.shareableRepos.has(r))
+        : selectedRepos;
+
+      if (shareableRepos.length === 0) {
+        toast.error("Cannot generate link", {
+          description:
+            "No shareable repositories selected. Check your privacy settings.",
+        });
+        setGenerating(false);
+        return;
+      }
+
       // Fetch metric snapshot for the share link
       const selectedFullNames = repositories
-        .filter((repo) => selectedRepos.includes(repo.name))
+        .filter((repo) => shareableRepos.includes(repo.name))
         .map((repo) => repo.fullName);
 
       const githubDateRange = toGitHubDateRange(dateRange);
@@ -82,23 +99,38 @@ export function ShareButton({
           ? prResult.value.data
           : [];
 
+      /** Check if a metric key is eligible per privacy settings */
+      const isEligible = (key: string): boolean =>
+        !privacy || privacy.shareableMetrics.has(key as never);
+
       const metrics: MetricSnapshot = {
-        totalCommits: commits.length,
-        prsOpened: prs.length,
-        prsMerged: prs.filter((pr) => pr.merged).length,
+        totalCommits: isEligible("commits") ? commits.length : 0,
+        prsOpened: isEligible("prs-opened") ? prs.length : 0,
+        prsMerged: isEligible("prs-merged")
+          ? prs.filter((pr) => pr.merged).length
+          : 0,
         linesChanged:
-          linesResult.status === "fulfilled" && linesResult.value.success
+          isEligible("lines-changed") &&
+          linesResult.status === "fulfilled" &&
+          linesResult.value.success
             ? linesResult.value.data.total
             : 0,
         reviewTurnaroundHours:
-          reviewResult.status === "fulfilled" && reviewResult.value.success
+          isEligible("review-turnaround") &&
+          reviewResult.status === "fulfilled" &&
+          reviewResult.value.success
             ? reviewResult.value.data.averageHours
             : 0,
         issueCloseRate:
-          issueResult.status === "fulfilled" && issueResult.value.success
+          isEligible("issue-close-rate") &&
+          issueResult.status === "fulfilled" &&
+          issueResult.value.success
             ? issueResult.value.data.rate
             : 0,
-        velocity: days > 0 ? Math.round((commits.length / days) * 10) / 10 : 0,
+        velocity:
+          isEligible("coding-velocity") && days > 0
+            ? Math.round((commits.length / days) * 10) / 10
+            : 0,
       };
 
       const response = await fetch("/api/share", {
@@ -107,7 +139,7 @@ export function ShareButton({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          repos: selectedRepos,
+          repos: shareableRepos,
           dateFrom: dateRange.from?.toISOString(),
           dateTo: dateRange.to?.toISOString(),
           commits,
