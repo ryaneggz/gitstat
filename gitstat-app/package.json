@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "dev:agent": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-agent-secret} NEXTAUTH_URL=http://localhost:3080 next dev -p 3080",
+        "dev:agent": "dotenv -e ~/.env/gitstat/.env -- next dev -p 3080",
         "build": "next build",
         "start": "next start",
         "lint": "eslint"
@@ -38,6 +38,7 @@
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "babel-plugin-react-compiler": "1.0.0",
+        "dotenv-cli": "^11.0.0",
         "eslint": "^9",
         "eslint-config-next": "16.1.3",
         "tailwindcss": "^4",

@@ -51,7 +51,7 @@ cp .env.example .env.local
    - Fill in the application details:
      - **Application name**: GitStat (or your preferred name)
      - **Homepage URL**: `http://localhost:3000`
-     - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
+     - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github` (use port 3080 if running `npm run dev:agent`)
    - Click **Register application**
    - Copy the **Client ID** and generate a new **Client Secret**
 
@@ -71,7 +71,7 @@ GITHUB_SECRET=your_github_client_secret
 # NextAuth secret - the value you generated above
 NEXTAUTH_SECRET=your_generated_secret
 
-# NextAuth URL
+# NextAuth URL (must match your dev server port: 3000 for `npm run dev`, 3080 for `npm run dev:agent`)
 NEXTAUTH_URL=http://localhost:3000
 ```
 
