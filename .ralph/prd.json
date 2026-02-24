@@ -57,6 +57,23 @@
             "priority": 4,
             "passes": true,
             "notes": "Verified: README already documents port 3080 for dev:agent in OAuth callback section (line 54) and NEXTAUTH_URL comment (line 74)"
+        },
+        {
+            "id": "US-005",
+            "title": "Add startup validation for GITHUB_TOKEN in dev mode",
+            "description": "As a developer, I want the app to fail fast at startup with a clear error message when NODE_ENV is not 'production' and GITHUB_TOKEN is not set, so I know exactly what to fix and where.",
+            "acceptanceCriteria": [
+                "When NODE_ENV !== 'production' and GITHUB_TOKEN is not set (empty or undefined), the app throws an error at startup before serving any requests",
+                "The error message includes the text 'GITHUB_TOKEN is required in development mode'",
+                "The error message includes the path to the .env file (e.g. 'See gitstat-app/.example.env for setup instructions' or the resolved path to .env.local)",
+                "When NODE_ENV === 'production', the check is skipped entirely (no error even if GITHUB_TOKEN is missing)",
+                "When GITHUB_TOKEN is set in dev mode, the app starts normally with no warnings",
+                "The validation runs in the auth config module (gitstat-app/src/lib/auth.ts) at module load time, not inside a request handler",
+                "Typecheck passes"
+            ],
+            "priority": 5,
+            "passes": true,
+            "notes": "Implemented: added module-level GITHUB_TOKEN validation in auth.ts that throws at startup in non-production mode"
         }
     ]
 }

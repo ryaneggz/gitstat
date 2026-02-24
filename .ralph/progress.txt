@@ -9,6 +9,7 @@ Started: Mon Feb 23 20:32:14 MST 2026
 - The `dev:agent` script uses `${NEXTAUTH_SECRET:-dev-agent-secret}` to provide a fallback secret for headless agent workflows
 - When testing auth in browser, always clear cookies first to avoid stale JWT tokens from previous server instances
 - The dashboard layout (`src/app/dashboard/layout.tsx`) uses server-side `getServerSession()` and redirects to `/login` if null
+- Module-level validation in `auth.ts` is the right place for fail-fast env var checks — it runs at import time before any request handlers
 ---
 
 ## 2026-02-23 - US-001
@@ -49,4 +50,16 @@ Started: Mon Feb 23 20:32:14 MST 2026
 - Files changed: none (verification story)
 - **Learnings for future iterations:**
   - README was already updated in a prior iteration alongside the dev:agent script and .example.env changes
+---
+
+## 2026-02-23 - US-005
+- What was implemented: Added module-level GITHUB_TOKEN validation in `gitstat-app/src/lib/auth.ts` that throws at startup when `NODE_ENV !== 'production'` and `GITHUB_TOKEN` is not set
+- Files changed: `gitstat-app/src/lib/auth.ts` (added 7-line validation block at module level)
+- Error message: `"GITHUB_TOKEN is required in development mode. See gitstat-app/.example.env for setup instructions."`
+- Production mode is unaffected (check is skipped when `NODE_ENV === 'production'`)
+- Typecheck and lint both pass
+- **Learnings for future iterations:**
+  - Module-level `throw new Error(...)` in Next.js will crash the server at startup — this is the correct fail-fast pattern for required env vars
+  - The validation must be placed before any code that uses the env var (above the providers array)
+  - `!process.env.GITHUB_TOKEN` catches both `undefined` and empty string `""` — no need for separate checks
 ---
