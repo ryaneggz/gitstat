@@ -32,3 +32,12 @@ Started: Mon Feb 23 20:32:14 MST 2026
   - Always clear browser cookies between server restarts when testing auth flows
   - The `signIn` function from next-auth/react handles credentials flow: POST to callback → get `{url: "..."}` JSON → `window.location.href = url`
 ---
+
+## 2026-02-23 - US-003
+- What was implemented: Verification only — no code changes needed. The `.example.env` already contains port alignment comment.
+- Line 10: `# Must match the port your dev server runs on (3000 for 'npm run dev', 3080 for 'npm run dev:agent')`
+- Line 11: `NEXTAUTH_URL=http://localhost:3000` (default preserved)
+- Files changed: none (verification story)
+- **Learnings for future iterations:**
+  - `.example.env` was already updated in a prior iteration (likely the same one that added the dev:agent script)
+---
