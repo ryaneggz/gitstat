@@ -3,8 +3,9 @@
 # Frontend commands
 .PHONY: install dev build test lint format archive
 
+MAX_ITER ?= 100
 ralph.loop:
-	bash .ralph/ralph.sh 50
+	bash .ralph/ralph.sh $(MAX_ITER)
 
 install:
 	cd gitstat && npm install
