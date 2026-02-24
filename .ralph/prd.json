@@ -55,8 +55,8 @@
                 "Typecheck passes"
             ],
             "priority": 4,
-            "passes": false,
-            "notes": ""
+            "passes": true,
+            "notes": "Verified: README already documents port 3080 for dev:agent in OAuth callback section (line 54) and NEXTAUTH_URL comment (line 74)"
         }
     ]
 }

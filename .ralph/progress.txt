@@ -41,3 +41,12 @@ Started: Mon Feb 23 20:32:14 MST 2026
 - **Learnings for future iterations:**
   - `.example.env` was already updated in a prior iteration (likely the same one that added the dev:agent script)
 ---
+
+## 2026-02-23 - US-004
+- What was implemented: Verification only — no code changes needed. README.md already documents port/NEXTAUTH_URL relationship.
+- Line 54: OAuth callback URL section mentions port 3080 for dev:agent
+- Line 74: NEXTAUTH_URL example includes comment about matching dev server port
+- Files changed: none (verification story)
+- **Learnings for future iterations:**
+  - README was already updated in a prior iteration alongside the dev:agent script and .example.env changes
+---
