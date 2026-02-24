@@ -9,7 +9,7 @@ import {
   toGitHubDateRange,
 } from "@/components/date-range-picker";
 import { TimelineChart } from "@/components/timeline-chart";
-import { VelocityMetrics } from "@/components/velocity-metrics";
+import { MetricsGrid } from "@/components/metrics-grid";
 import { ExportButton } from "@/components/export-button";
 import { ShareButton } from "@/components/share-button";
 import { fetchCommits } from "@/app/actions/commits";
@@ -132,16 +132,16 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Velocity Metrics Section */}
+      {/* Metric Cards Grid */}
       {selectedRepos.length > 0 && (
-        <div className="relative">
-          {loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 rounded-lg">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          <VelocityMetrics commits={commits} dateRange={dateRange} />
-        </div>
+        <MetricsGrid
+          commits={commits}
+          commitsLoading={loading}
+          commitsError={error}
+          selectedRepos={selectedRepos}
+          dateRange={dateRange}
+          repositories={repositories}
+        />
       )}
 
       {/* Timeline Chart Section */}
