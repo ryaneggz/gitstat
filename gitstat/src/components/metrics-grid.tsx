@@ -42,6 +42,15 @@ function groupByDay(dates: string[]): number[] {
     .map(([, count]) => count);
 }
 
+/** Format percentage delta between current and previous values */
+function formatDelta(current: number, previous: number): string | undefined {
+  if (previous === 0 && current === 0) return undefined;
+  if (previous === 0) return current > 0 ? "+100%" : undefined;
+  const pct = Math.round(((current - previous) / previous) * 100);
+  if (pct === 0) return "0%";
+  return pct > 0 ? `+${pct}%` : `${pct}%`;
+}
+
 /** Compare first half vs second half of sparkline data */
 function computeTrend(sparklineData: number[]): "up" | "down" | "flat" {
   if (sparklineData.length < 2) return "flat";
@@ -94,6 +103,12 @@ interface MetricsGridProps {
   selectedRepos: string[];
   dateRange: DateRangeState;
   repositories: Repository[];
+  /** Whether period-over-period comparison is enabled */
+  compareEnabled?: boolean;
+  /** Commits from the previous period (shared with timeline chart) */
+  previousCommits?: Commit[];
+  /** Previous period date range for non-commit metric fetching */
+  previousDateRange?: DateRangeState;
 }
 
 export function MetricsGrid({
@@ -103,6 +118,9 @@ export function MetricsGrid({
   selectedRepos,
   dateRange,
   repositories,
+  compareEnabled,
+  previousCommits,
+  previousDateRange,
 }: MetricsGridProps) {
   const [prState, setPrState] = React.useState<MetricState<PullRequest[]>>(
     initialState
@@ -114,6 +132,20 @@ export function MetricsGrid({
     MetricState<IssueCloseRate>
   >(initialState);
   const [linesState, setLinesState] = React.useState<MetricState<LinesChanged>>(
+    initialState
+  );
+
+  // Previous period metric states
+  const [prevPrState, setPrevPrState] = React.useState<MetricState<PullRequest[]>>(
+    initialState
+  );
+  const [prevReviewState, setPrevReviewState] = React.useState<
+    MetricState<ReviewTurnaround>
+  >(initialState);
+  const [prevIssueState, setPrevIssueState] = React.useState<
+    MetricState<IssueCloseRate>
+  >(initialState);
+  const [prevLinesState, setPrevLinesState] = React.useState<MetricState<LinesChanged>>(
     initialState
   );
 
@@ -174,6 +206,61 @@ export function MetricsGrid({
     });
   }, [selectedRepos, dateRange, repositories]);
 
+  // Fetch previous period metrics when comparison is enabled
+  React.useEffect(() => {
+    if (!compareEnabled || !previousDateRange?.from || !previousDateRange?.to) {
+      setPrevPrState(initialState());
+      setPrevReviewState(initialState());
+      setPrevIssueState(initialState());
+      setPrevLinesState(initialState());
+      return;
+    }
+
+    if (selectedRepos.length === 0) return;
+
+    const selectedFullNames = repositories
+      .filter((repo) => selectedRepos.includes(repo.name))
+      .map((repo) => repo.fullName);
+
+    const prevRange = toGitHubDateRange(previousDateRange);
+
+    setPrevPrState((prev) => ({ ...prev, loading: true, error: null }));
+    fetchPullRequests(selectedFullNames, prevRange).then((result) => {
+      if (result.success) {
+        setPrevPrState({ data: result.data, loading: false, error: null });
+      } else {
+        setPrevPrState({ data: null, loading: false, error: result.error });
+      }
+    });
+
+    setPrevReviewState((prev) => ({ ...prev, loading: true, error: null }));
+    fetchReviewTurnaround(selectedFullNames, prevRange).then((result) => {
+      if (result.success) {
+        setPrevReviewState({ data: result.data, loading: false, error: null });
+      } else {
+        setPrevReviewState({ data: null, loading: false, error: result.error });
+      }
+    });
+
+    setPrevIssueState((prev) => ({ ...prev, loading: true, error: null }));
+    fetchIssueCloseRate(selectedFullNames, prevRange).then((result) => {
+      if (result.success) {
+        setPrevIssueState({ data: result.data, loading: false, error: null });
+      } else {
+        setPrevIssueState({ data: null, loading: false, error: result.error });
+      }
+    });
+
+    setPrevLinesState((prev) => ({ ...prev, loading: true, error: null }));
+    fetchLinesChanged(selectedFullNames, prevRange).then((result) => {
+      if (result.success) {
+        setPrevLinesState({ data: result.data, loading: false, error: null });
+      } else {
+        setPrevLinesState({ data: null, loading: false, error: result.error });
+      }
+    });
+  }, [compareEnabled, previousDateRange, selectedRepos, repositories]);
+
   // Derived commit metrics
   const commitSparkline = React.useMemo(
     () => groupByDay(commits.map((c) => c.date)),
@@ -202,6 +289,31 @@ export function MetricsGrid({
     [prState.data]
   );
 
+  // Compute deltas when comparison is enabled
+  const showDelta = compareEnabled && previousCommits !== undefined;
+  const prevTotalCommits = previousCommits?.length ?? 0;
+  const prevVelocity = React.useMemo(() => {
+    if (!previousCommits || previousCommits.length === 0) return 0;
+    const days = groupByDay(previousCommits.map((c) => c.date));
+    return days.length > 0 ? previousCommits.length / days.length : 0;
+  }, [previousCommits]);
+  const prevPrsOpened = prevPrState.data?.length ?? 0;
+  const prevPrsMerged = prevPrState.data?.filter((pr) => pr.merged).length ?? 0;
+
+  const commitsDelta = showDelta ? formatDelta(totalCommits, prevTotalCommits) : undefined;
+  const velocityDelta = showDelta ? formatDelta(velocity, prevVelocity) : undefined;
+  const prsOpenedDelta = showDelta && !prevPrState.loading ? formatDelta(prsOpened, prevPrsOpened) : undefined;
+  const prsMergedDelta = showDelta && !prevPrState.loading ? formatDelta(prsMerged, prevPrsMerged) : undefined;
+  const linesDelta = showDelta && !prevLinesState.loading && linesState.data && prevLinesState.data
+    ? formatDelta(linesState.data.total, prevLinesState.data.total)
+    : undefined;
+  const reviewDelta = showDelta && !prevReviewState.loading && reviewState.data && prevReviewState.data
+    ? formatDelta(reviewState.data.averageHours, prevReviewState.data.averageHours)
+    : undefined;
+  const issueDelta = showDelta && !prevIssueState.loading && issueState.data && prevIssueState.data
+    ? formatDelta(issueState.data.rate, prevIssueState.data.rate)
+    : undefined;
+
   return (
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {/* 1. Commits */}
@@ -216,6 +328,7 @@ export function MetricsGrid({
           trend={commitTrend}
           sparklineData={commitSparkline}
           unit="commits"
+          delta={commitsDelta}
         />
       )}
 
@@ -231,6 +344,7 @@ export function MetricsGrid({
           trend={computeTrend(prOpenedSparkline)}
           sparklineData={prOpenedSparkline}
           unit="pull requests"
+          delta={prsOpenedDelta}
         />
       )}
 
@@ -246,6 +360,7 @@ export function MetricsGrid({
           trend={computeTrend(prMergedSparkline)}
           sparklineData={prMergedSparkline}
           unit="merged"
+          delta={prsMergedDelta}
         />
       )}
 
@@ -268,6 +383,7 @@ export function MetricsGrid({
               ? `+${linesState.data.additions.toLocaleString()} / -${linesState.data.deletions.toLocaleString()}`
               : undefined
           }
+          delta={linesDelta}
         />
       )}
 
@@ -290,6 +406,7 @@ export function MetricsGrid({
               ? `${reviewState.data.totalPRsReviewed} PRs reviewed`
               : undefined
           }
+          delta={reviewDelta}
         />
       )}
 
@@ -314,6 +431,7 @@ export function MetricsGrid({
               ? `${issueState.data.closed} closed / ${issueState.data.opened} opened`
               : undefined
           }
+          delta={issueDelta}
         />
       )}
 
@@ -329,6 +447,7 @@ export function MetricsGrid({
           trend={commitTrend}
           sparklineData={commitSparkline}
           unit="commits/day"
+          delta={velocityDelta}
         />
       )}
     </div>

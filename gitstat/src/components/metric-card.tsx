@@ -22,6 +22,8 @@ export interface MetricCardProps {
   sparklineData: number[];
   unit: string;
   description?: string;
+  /** Period-over-period delta, e.g. "+15%" or "-8%" */
+  delta?: string;
 }
 
 const trendConfig = {
@@ -55,6 +57,7 @@ export function MetricCard({
   sparklineData,
   unit,
   description,
+  delta,
 }: MetricCardProps) {
   const config = trendConfig[trend];
   const TrendIcon = config.icon;
@@ -84,6 +87,16 @@ export function MetricCard({
             </TooltipTrigger>
             <TooltipContent>{config.label}</TooltipContent>
           </Tooltip>
+          {delta && (
+            <span
+              className={cn(
+                "text-xs font-medium",
+                delta.startsWith("+") ? "text-emerald-500" : delta.startsWith("-") ? "text-red-500" : "text-muted-foreground"
+              )}
+            >
+              {delta} vs prev
+            </span>
+          )}
         </div>
 
         {description && (

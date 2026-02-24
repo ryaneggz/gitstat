@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Commit } from "@/lib/github";
@@ -24,12 +25,14 @@ export type TimeAggregation = "daily" | "weekly" | "monthly";
 
 interface TimelineChartProps {
   commits: Commit[];
+  previousCommits?: Commit[];
   className?: string;
 }
 
 interface ChartDataPoint {
   date: string;
   cumulativeCount: number;
+  previousCumulativeCount?: number;
   formattedDate: string;
 }
 
@@ -111,6 +114,26 @@ function transformCommitsToChartData(
 }
 
 /**
+ * Merges current period data with previous period data, aligning the previous
+ * period's buckets to the current period's x-axis positions.
+ * Previous period commits are re-bucketed using the same aggregation, then
+ * each bucket is mapped to the corresponding current-period date by index.
+ */
+function mergeWithPreviousPeriod(
+  currentData: ChartDataPoint[],
+  previousCommits: Commit[],
+  aggregation: TimeAggregation
+): ChartDataPoint[] {
+  const previousData = transformCommitsToChartData(previousCommits, aggregation);
+
+  return currentData.map((point, idx) => ({
+    ...point,
+    previousCumulativeCount:
+      idx < previousData.length ? previousData[idx].cumulativeCount : undefined,
+  }));
+}
+
+/**
  * Determines the appropriate date format based on the date range and aggregation
  */
 function getDateFormat(
@@ -144,7 +167,7 @@ function CustomTooltip({
   payload,
 }: {
   active?: boolean;
-  payload?: Array<{ value: number; payload: ChartDataPoint }>;
+  payload?: Array<{ value: number; payload: ChartDataPoint; dataKey: string }>;
 }) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -158,17 +181,33 @@ function CustomTooltip({
       <p className="text-muted-foreground">
         {data.cumulativeCount} total commits
       </p>
+      {data.previousCumulativeCount !== undefined && (
+        <p className="text-muted-foreground/60">
+          {data.previousCumulativeCount} prev period
+        </p>
+      )}
     </div>
   );
 }
 
-export function TimelineChart({ commits, className }: TimelineChartProps) {
+export function TimelineChart({ commits, previousCommits, className }: TimelineChartProps) {
   const [aggregation, setAggregation] =
     React.useState<TimeAggregation>("daily");
 
-  const chartData = React.useMemo(
+  const currentData = React.useMemo(
     () => transformCommitsToChartData(commits, aggregation),
     [commits, aggregation]
+  );
+
+  const chartData = React.useMemo(() => {
+    if (previousCommits && previousCommits.length > 0) {
+      return mergeWithPreviousPeriod(currentData, previousCommits, aggregation);
+    }
+    return currentData;
+  }, [currentData, previousCommits, aggregation]);
+
+  const hasPreviousData = chartData.some(
+    (d) => d.previousCumulativeCount !== undefined
   );
 
   const dateFormat = React.useMemo(
@@ -229,9 +268,24 @@ export function TimelineChart({ commits, className }: TimelineChartProps) {
               width={60}
             />
             <Tooltip content={<CustomTooltip />} />
+            {hasPreviousData && (
+              <Line
+                type="monotone"
+                dataKey="previousCumulativeCount"
+                name="Previous Period"
+                stroke="var(--chart-1)"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+                strokeOpacity={0.3}
+                dot={false}
+                activeDot={false}
+                connectNulls
+              />
+            )}
             <Line
               type="monotone"
               dataKey="cumulativeCount"
+              name="Current Period"
               stroke="var(--chart-1)"
               strokeWidth={2}
               dot={chartData.length <= 30}
@@ -242,6 +296,13 @@ export function TimelineChart({ commits, className }: TimelineChartProps) {
                 strokeWidth: 2,
               }}
             />
+            {hasPreviousData && (
+              <Legend
+                verticalAlign="top"
+                align="right"
+                wrapperStyle={{ fontSize: "12px", paddingBottom: "8px" }}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>

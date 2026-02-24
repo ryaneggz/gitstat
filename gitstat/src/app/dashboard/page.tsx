@@ -7,6 +7,7 @@ import {
   DateRangePicker,
   DateRangeState,
   toGitHubDateRange,
+  getPreviousPeriod,
 } from "@/components/date-range-picker";
 import { TimelineChart } from "@/components/timeline-chart";
 import { MetricsGrid } from "@/components/metrics-grid";
@@ -29,7 +30,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = React.useState(false);
   const [reposLoading, setReposLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [compareEnabled, setCompareEnabled] = React.useState(false);
+  const [previousCommits, setPreviousCommits] = React.useState<Commit[]>([]);
   const chartRef = React.useRef<HTMLDivElement>(null);
+
+  const previousDateRange = React.useMemo(
+    () => (compareEnabled ? getPreviousPeriod(dateRange) : null),
+    [compareEnabled, dateRange]
+  );
 
   // Load repositories on mount
   React.useEffect(() => {
@@ -82,6 +90,32 @@ export default function DashboardPage() {
     loadCommits();
   }, [selectedRepos, dateRange, repositories]);
 
+  // Fetch previous period commits when comparison is enabled
+  React.useEffect(() => {
+    if (!compareEnabled || !previousDateRange) {
+      setPreviousCommits([]);
+      return;
+    }
+
+    if (selectedRepos.length === 0) {
+      setPreviousCommits([]);
+      return;
+    }
+
+    const selectedFullNames = repositories
+      .filter((repo) => selectedRepos.includes(repo.name))
+      .map((repo) => repo.fullName);
+
+    const prevGithubDateRange = toGitHubDateRange(previousDateRange);
+    fetchCommits(selectedFullNames, prevGithubDateRange).then((result) => {
+      if (result.success) {
+        setPreviousCommits(result.data);
+      } else {
+        setPreviousCommits([]);
+      }
+    });
+  }, [compareEnabled, previousDateRange, selectedRepos, repositories]);
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Dashboard</h2>
@@ -114,6 +148,8 @@ export default function DashboardPage() {
               <DateRangePicker
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
+                compareEnabled={compareEnabled}
+                onCompareChange={setCompareEnabled}
               />
             </div>
           </div>
@@ -141,6 +177,9 @@ export default function DashboardPage() {
           selectedRepos={selectedRepos}
           dateRange={dateRange}
           repositories={repositories}
+          compareEnabled={compareEnabled}
+          previousCommits={previousCommits}
+          previousDateRange={previousDateRange ?? undefined}
         />
       )}
 
@@ -177,7 +216,10 @@ export default function DashboardPage() {
                 </div>
               )}
               <div ref={chartRef}>
-                <TimelineChart commits={commits} />
+                <TimelineChart
+                  commits={commits}
+                  previousCommits={compareEnabled ? previousCommits : undefined}
+                />
               </div>
             </div>
           )}

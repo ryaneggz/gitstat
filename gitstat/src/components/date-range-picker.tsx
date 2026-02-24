@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
-import { format, subDays, subYears, isAfter, startOfDay, endOfDay } from "date-fns";
+import { format, subDays, subYears, isAfter, startOfDay, endOfDay, differenceInDays } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ import { DateRange } from "@/lib/github";
 interface DateRangePickerProps {
   dateRange: DateRangeState;
   onDateRangeChange: (range: DateRangeState) => void;
+  compareEnabled?: boolean;
+  onCompareChange?: (enabled: boolean) => void;
 }
 
 export interface DateRangeState {
@@ -65,6 +68,8 @@ const presets: Record<PresetKey, Preset> = {
 export function DateRangePicker({
   dateRange,
   onDateRangeChange,
+  compareEnabled,
+  onCompareChange,
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [activePreset, setActivePreset] = React.useState<PresetKey | null>(null);
@@ -161,6 +166,21 @@ export function DateRangePicker({
           </div>
         </PopoverContent>
       </Popover>
+      {dateRange.from && dateRange.to && onCompareChange && (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="compare-period"
+            checked={compareEnabled}
+            onCheckedChange={(checked) => onCompareChange(checked === true)}
+          />
+          <label
+            htmlFor="compare-period"
+            className="text-sm text-muted-foreground cursor-pointer select-none"
+          >
+            Compare to previous period
+          </label>
+        </div>
+      )}
       {error && (
         <p className="text-sm text-destructive">{error}</p>
       )}
@@ -175,5 +195,21 @@ export function toGitHubDateRange(state: DateRangeState): DateRange {
   return {
     since: state.from ? startOfDay(state.from).toISOString() : undefined,
     until: state.to ? endOfDay(state.to).toISOString() : undefined,
+  };
+}
+
+/**
+ * Compute previous period of same duration immediately before the selected range.
+ * E.g., May 10-20 (11 days) → April 29 - May 9 (11 days).
+ * Returns null if range is incomplete.
+ */
+export function getPreviousPeriod(
+  dateRange: DateRangeState
+): DateRangeState | null {
+  if (!dateRange.from || !dateRange.to) return null;
+  const durationDays = differenceInDays(dateRange.to, dateRange.from);
+  return {
+    from: subDays(dateRange.from, durationDays + 1),
+    to: subDays(dateRange.from, 1),
   };
 }
