@@ -66,6 +66,24 @@ interface SharePreviewProps {
   repositories: Repository[];
 }
 
+/** Format date range as a short string for overlay */
+function formatDateOverlay(dateRange: DateRangeState): string | null {
+  if (!dateRange.from && !dateRange.to) return null;
+  const from = dateRange.from?.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const to = dateRange.to?.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  if (from && to) return `${from} - ${to}`;
+  if (from) return `From ${from}`;
+  return `Until ${to}`;
+}
+
 export function SharePreview({
   commits,
   selectedRepos,
@@ -365,6 +383,8 @@ export function SharePreview({
                   metrics={visibleMetrics}
                   userName={userName}
                   userImage={userImage}
+                  dateOverlay={formatDateOverlay(dateRange)}
+                  repoNames={selectedRepos}
                 />
               ) : (
                 <ChartSnapshotPreview
@@ -372,6 +392,8 @@ export function SharePreview({
                   chartData={chartData}
                   userName={userName}
                   userImage={userImage}
+                  dateOverlay={formatDateOverlay(dateRange)}
+                  repoNames={selectedRepos}
                 />
               )}
             </div>
@@ -494,10 +516,14 @@ function StatsCardPreview({
   metrics,
   userName,
   userImage,
+  dateOverlay,
+  repoNames,
 }: {
   metrics: ShareMetric[];
   userName?: string;
   userImage?: string;
+  dateOverlay?: string | null;
+  repoNames?: string[];
 }) {
   return (
     <div className="flex h-full w-full flex-col justify-between bg-zinc-950 p-[6%] text-white">
@@ -523,6 +549,16 @@ function StatsCardPreview({
         <p className="text-lg font-bold tracking-tight">GitStat</p>
       </div>
 
+      {/* Date range and repo overlay */}
+      {(dateOverlay || (repoNames && repoNames.length > 0)) && (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-zinc-500">
+          {dateOverlay && <span>{dateOverlay}</span>}
+          {repoNames && repoNames.length > 0 && (
+            <span>{repoNames.join(", ")}</span>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-x-[6%] gap-y-[4%] sm:grid-cols-3">
         {metrics.map((m) => (
           <div key={m.key}>
@@ -534,7 +570,9 @@ function StatsCardPreview({
         ))}
       </div>
 
-      <p className="text-[10px] text-zinc-600">gitstat.dev</p>
+      <p className="text-[10px] text-zinc-600">
+        gitstat.dev{userName ? ` · @${userName}` : ""}
+      </p>
     </div>
   );
 }
@@ -545,11 +583,15 @@ function ChartSnapshotPreview({
   chartData,
   userName,
   userImage,
+  dateOverlay,
+  repoNames,
 }: {
   metrics: ShareMetric[];
   chartData: ChartDataPoint[];
   userName?: string;
   userImage?: string;
+  dateOverlay?: string | null;
+  repoNames?: string[];
 }) {
   const svgPoints = React.useMemo(() => {
     if (chartData.length === 0) return "";
@@ -593,6 +635,16 @@ function ChartSnapshotPreview({
         <p className="text-lg font-bold tracking-tight">GitStat</p>
       </div>
 
+      {/* Date range and repo overlay */}
+      {(dateOverlay || (repoNames && repoNames.length > 0)) && (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-zinc-500">
+          {dateOverlay && <span>{dateOverlay}</span>}
+          {repoNames && repoNames.length > 0 && (
+            <span>{repoNames.join(", ")}</span>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 py-[3%]">
         {svgPoints ? (
           <svg
@@ -628,7 +680,9 @@ function ChartSnapshotPreview({
         ))}
       </div>
 
-      <p className="mt-[2%] text-[10px] text-zinc-600">gitstat.dev</p>
+      <p className="mt-[2%] text-[10px] text-zinc-600">
+        gitstat.dev{userName ? ` · @${userName}` : ""}
+      </p>
     </div>
   );
 }

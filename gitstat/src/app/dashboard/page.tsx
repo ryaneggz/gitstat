@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 dateRange={dateRange}
                 repositories={repositories}
               />
-              <ShareButton selectedRepos={selectedRepos} dateRange={dateRange} commits={commits} />
+              <ShareButton selectedRepos={selectedRepos} dateRange={dateRange} commits={commits} repositories={repositories} />
               <ExportButton targetRef={chartRef} filename="gitstat-chart" />
             </div>
           )}

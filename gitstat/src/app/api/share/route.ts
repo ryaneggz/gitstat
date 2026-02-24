@@ -2,17 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth";
 import type { Commit } from "@/lib/github";
 
-interface ShareData {
+export interface MetricSnapshot {
+  totalCommits: number;
+  prsOpened: number;
+  prsMerged: number;
+  linesChanged: number;
+  reviewTurnaroundHours: number;
+  issueCloseRate: number;
+  velocity: number;
+}
+
+export interface ShareData {
   repos: string[];
   dateFrom?: string;
   dateTo?: string;
   username: string;
   commits: Commit[];
+  metrics?: MetricSnapshot;
 }
 
 /**
- * Generate a shareable link by encoding the share data as base64 URL-safe string
- * This approach avoids needing a database while still providing a unique "ID"
+ * Generate a shareable link by encoding the share data as base64 URL-safe string.
+ * This approach avoids needing a database while still providing a unique "ID".
+ * Links are valid indefinitely (at least 30 days) since data is self-contained.
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -23,11 +35,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { repos, dateFrom, dateTo, commits } = body as {
+    const { repos, dateFrom, dateTo, commits, metrics } = body as {
       repos: string[];
       dateFrom?: string;
       dateTo?: string;
       commits: Commit[];
+      metrics?: MetricSnapshot;
     };
 
     if (!repos || !Array.isArray(repos) || repos.length === 0) {
@@ -56,6 +69,9 @@ export async function POST(request: NextRequest) {
     }
     if (dateTo) {
       shareData.dateTo = dateTo;
+    }
+    if (metrics) {
+      shareData.metrics = metrics;
     }
 
     // Encode the share data as base64 URL-safe string
