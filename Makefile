@@ -12,22 +12,22 @@ ralph.loop:
 	bash .ralph/ralph.sh $(MAX_ITER)
 
 install:
-	cd gitstat && npm install
+	cd gitstat-app && npm install
 
 dev:
-	cd gitstat && npm run dev
+	cd gitstat-app && npm run dev
 
 build:
-	cd gitstat && npm run build
+	cd gitstat-app && npm run build
 
 test:
-	cd gitstat && npm run test
+	cd gitstat-app && npm run test
 
 lint:
-	cd gitstat && npm run lint
+	cd gitstat-app && npm run lint
 
 format:
-	cd gitstat && npx prettier --write .
+	cd gitstat-app && npx prettier --write .
 
 # Archive command - archives .ralph/prd.json, .ralph/progress.txt, and specs/* into .ralph/archive/NNNN/
 SHELL := /bin/bash
