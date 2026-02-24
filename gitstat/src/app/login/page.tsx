@@ -32,6 +32,14 @@ export default function LoginPage() {
     signIn("github", { callbackUrl: "/dashboard" });
   };
 
+  const handleDevLogin = () => {
+    signIn("dev-credentials", {
+      username: "admin",
+      password: "test1234",
+      callbackUrl: "/dashboard",
+    });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -50,6 +58,16 @@ export default function LoginPage() {
             <GitHubIcon className="size-5" />
             Sign in with GitHub
           </Button>
+          {process.env.NODE_ENV === "development" && (
+            <Button
+              onClick={handleDevLogin}
+              variant="outline"
+              size="lg"
+              className="w-full max-w-xs mt-3"
+            >
+              Dev Agent Login
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
