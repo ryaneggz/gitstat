@@ -9,3 +9,5 @@
 **/.env*
 **/prd.json
 **/progress.txt
+# specs/*
+# !specs/.gitkeep
