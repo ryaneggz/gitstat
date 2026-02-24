@@ -11,6 +11,11 @@ import {
 } from "@/components/date-range-picker";
 import { TimelineChart } from "@/components/timeline-chart";
 import { MetricsGrid } from "@/components/metrics-grid";
+import {
+  MetricCustomizer,
+  loadVisibleMetrics,
+  type MetricKey,
+} from "@/components/metric-customizer";
 import { ExportButton } from "@/components/export-button";
 import { ShareButton } from "@/components/share-button";
 import { fetchCommits } from "@/app/actions/commits";
@@ -32,6 +37,9 @@ export default function DashboardPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [compareEnabled, setCompareEnabled] = React.useState(false);
   const [previousCommits, setPreviousCommits] = React.useState<Commit[]>([]);
+  const [visibleMetrics, setVisibleMetrics] = React.useState<Set<MetricKey>>(
+    () => loadVisibleMetrics()
+  );
   const chartRef = React.useRef<HTMLDivElement>(null);
 
   const previousDateRange = React.useMemo(
@@ -118,7 +126,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Dashboard</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <MetricCustomizer
+          visibleMetrics={visibleMetrics}
+          onVisibilityChange={setVisibleMetrics}
+        />
+      </div>
 
       {/* Rate Limit Error Alert */}
       {error && (
@@ -180,6 +194,7 @@ export default function DashboardPage() {
           compareEnabled={compareEnabled}
           previousCommits={previousCommits}
           previousDateRange={previousDateRange ?? undefined}
+          visibleMetrics={visibleMetrics}
         />
       )}
 

@@ -16,6 +16,7 @@ import type { IssueCloseRate } from "@/app/actions/issues";
 import type { LinesChanged } from "@/app/actions/lines-changed";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MetricKey } from "@/components/metric-customizer";
 
 interface MetricState<T> {
   data: T | null;
@@ -109,6 +110,8 @@ interface MetricsGridProps {
   previousCommits?: Commit[];
   /** Previous period date range for non-commit metric fetching */
   previousDateRange?: DateRangeState;
+  /** Which metric cards are visible (all visible if not provided) */
+  visibleMetrics?: Set<MetricKey>;
 }
 
 export function MetricsGrid({
@@ -121,7 +124,9 @@ export function MetricsGrid({
   compareEnabled,
   previousCommits,
   previousDateRange,
+  visibleMetrics,
 }: MetricsGridProps) {
+  const isVisible = (key: MetricKey) => !visibleMetrics || visibleMetrics.has(key);
   const [prState, setPrState] = React.useState<MetricState<PullRequest[]>>(
     initialState
   );
@@ -317,139 +322,146 @@ export function MetricsGrid({
   return (
     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {/* 1. Commits */}
-      {commitsLoading ? (
-        <LoadingCard title="Commits" />
-      ) : commitsError ? (
-        <ErrorCard title="Commits" error={commitsError} />
-      ) : (
-        <MetricCard
-          title="Commits"
-          value={String(totalCommits)}
-          trend={commitTrend}
-          sparklineData={commitSparkline}
-          unit="commits"
-          delta={commitsDelta}
-        />
-      )}
+      {isVisible("commits") &&
+        (commitsLoading ? (
+          <LoadingCard title="Commits" />
+        ) : commitsError ? (
+          <ErrorCard title="Commits" error={commitsError} />
+        ) : (
+          <MetricCard
+            title="Commits"
+            value={String(totalCommits)}
+            trend={commitTrend}
+            sparklineData={commitSparkline}
+            unit="commits"
+            delta={commitsDelta}
+          />
+        ))}
 
       {/* 2. PRs Opened */}
-      {prState.loading ? (
-        <LoadingCard title="PRs Opened" />
-      ) : prState.error ? (
-        <ErrorCard title="PRs Opened" error={prState.error} />
-      ) : (
-        <MetricCard
-          title="PRs Opened"
-          value={String(prsOpened)}
-          trend={computeTrend(prOpenedSparkline)}
-          sparklineData={prOpenedSparkline}
-          unit="pull requests"
-          delta={prsOpenedDelta}
-        />
-      )}
+      {isVisible("prs-opened") &&
+        (prState.loading ? (
+          <LoadingCard title="PRs Opened" />
+        ) : prState.error ? (
+          <ErrorCard title="PRs Opened" error={prState.error} />
+        ) : (
+          <MetricCard
+            title="PRs Opened"
+            value={String(prsOpened)}
+            trend={computeTrend(prOpenedSparkline)}
+            sparklineData={prOpenedSparkline}
+            unit="pull requests"
+            delta={prsOpenedDelta}
+          />
+        ))}
 
       {/* 3. PRs Merged */}
-      {prState.loading ? (
-        <LoadingCard title="PRs Merged" />
-      ) : prState.error ? (
-        <ErrorCard title="PRs Merged" error={prState.error} />
-      ) : (
-        <MetricCard
-          title="PRs Merged"
-          value={String(prsMerged)}
-          trend={computeTrend(prMergedSparkline)}
-          sparklineData={prMergedSparkline}
-          unit="merged"
-          delta={prsMergedDelta}
-        />
-      )}
+      {isVisible("prs-merged") &&
+        (prState.loading ? (
+          <LoadingCard title="PRs Merged" />
+        ) : prState.error ? (
+          <ErrorCard title="PRs Merged" error={prState.error} />
+        ) : (
+          <MetricCard
+            title="PRs Merged"
+            value={String(prsMerged)}
+            trend={computeTrend(prMergedSparkline)}
+            sparklineData={prMergedSparkline}
+            unit="merged"
+            delta={prsMergedDelta}
+          />
+        ))}
 
       {/* 4. Lines Changed */}
-      {linesState.loading ? (
-        <LoadingCard title="Lines Changed" />
-      ) : linesState.error ? (
-        <ErrorCard title="Lines Changed" error={linesState.error} />
-      ) : (
-        <MetricCard
-          title="Lines Changed"
-          value={
-            linesState.data ? linesState.data.total.toLocaleString() : "0"
-          }
-          trend="flat"
-          sparklineData={[]}
-          unit="lines"
-          description={
-            linesState.data
-              ? `+${linesState.data.additions.toLocaleString()} / -${linesState.data.deletions.toLocaleString()}`
-              : undefined
-          }
-          delta={linesDelta}
-        />
-      )}
+      {isVisible("lines-changed") &&
+        (linesState.loading ? (
+          <LoadingCard title="Lines Changed" />
+        ) : linesState.error ? (
+          <ErrorCard title="Lines Changed" error={linesState.error} />
+        ) : (
+          <MetricCard
+            title="Lines Changed"
+            value={
+              linesState.data ? linesState.data.total.toLocaleString() : "0"
+            }
+            trend="flat"
+            sparklineData={[]}
+            unit="lines"
+            description={
+              linesState.data
+                ? `+${linesState.data.additions.toLocaleString()} / -${linesState.data.deletions.toLocaleString()}`
+                : undefined
+            }
+            delta={linesDelta}
+          />
+        ))}
 
       {/* 5. Review Turnaround */}
-      {reviewState.loading ? (
-        <LoadingCard title="Review Turnaround" />
-      ) : reviewState.error ? (
-        <ErrorCard title="Review Turnaround" error={reviewState.error} />
-      ) : (
-        <MetricCard
-          title="Review Turnaround"
-          value={
-            reviewState.data ? String(reviewState.data.averageHours) : "0"
-          }
-          trend="flat"
-          sparklineData={[]}
-          unit="avg hours"
-          description={
-            reviewState.data
-              ? `${reviewState.data.totalPRsReviewed} PRs reviewed`
-              : undefined
-          }
-          delta={reviewDelta}
-        />
-      )}
+      {isVisible("review-turnaround") &&
+        (reviewState.loading ? (
+          <LoadingCard title="Review Turnaround" />
+        ) : reviewState.error ? (
+          <ErrorCard title="Review Turnaround" error={reviewState.error} />
+        ) : (
+          <MetricCard
+            title="Review Turnaround"
+            value={
+              reviewState.data ? String(reviewState.data.averageHours) : "0"
+            }
+            trend="flat"
+            sparklineData={[]}
+            unit="avg hours"
+            description={
+              reviewState.data
+                ? `${reviewState.data.totalPRsReviewed} PRs reviewed`
+                : undefined
+            }
+            delta={reviewDelta}
+          />
+        ))}
 
       {/* 6. Issue Close Rate */}
-      {issueState.loading ? (
-        <LoadingCard title="Issue Close Rate" />
-      ) : issueState.error ? (
-        <ErrorCard title="Issue Close Rate" error={issueState.error} />
-      ) : (
-        <MetricCard
-          title="Issue Close Rate"
-          value={
-            issueState.data
-              ? `${Math.round(issueState.data.rate * 100)}%`
-              : "0%"
-          }
-          trend="flat"
-          sparklineData={[]}
-          unit="close rate"
-          description={
-            issueState.data
-              ? `${issueState.data.closed} closed / ${issueState.data.opened} opened`
-              : undefined
-          }
-          delta={issueDelta}
-        />
-      )}
+      {isVisible("issue-close-rate") &&
+        (issueState.loading ? (
+          <LoadingCard title="Issue Close Rate" />
+        ) : issueState.error ? (
+          <ErrorCard title="Issue Close Rate" error={issueState.error} />
+        ) : (
+          <MetricCard
+            title="Issue Close Rate"
+            value={
+              issueState.data
+                ? `${Math.round(issueState.data.rate * 100)}%`
+                : "0%"
+            }
+            trend="flat"
+            sparklineData={[]}
+            unit="close rate"
+            description={
+              issueState.data
+                ? `${issueState.data.closed} closed / ${issueState.data.opened} opened`
+                : undefined
+            }
+            delta={issueDelta}
+          />
+        ))}
 
       {/* 7. Coding Velocity */}
-      {commitsLoading ? (
-        <LoadingCard title="Coding Velocity" />
-      ) : commitsError ? (
-        <ErrorCard title="Coding Velocity" error={commitsError} />
-      ) : (
-        <MetricCard
-          title="Coding Velocity"
-          value={velocity.toFixed(1)}
-          trend={commitTrend}
-          sparklineData={commitSparkline}
-          unit="commits/day"
-          delta={velocityDelta}
-        />
-      )}
+      {isVisible("coding-velocity") &&
+        (commitsLoading ? (
+          <LoadingCard title="Coding Velocity" />
+        ) : commitsError ? (
+          <ErrorCard title="Coding Velocity" error={commitsError} />
+        ) : (
+          <MetricCard
+            title="Coding Velocity"
+            value={velocity.toFixed(1)}
+            trend={commitTrend}
+            sparklineData={commitSparkline}
+            unit="commits/day"
+            delta={velocityDelta}
+          />
+        ))}
     </div>
   );
 }
