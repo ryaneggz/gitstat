@@ -16,6 +16,7 @@ import {
   loadVisibleMetrics,
   type MetricKey,
 } from "@/components/metric-customizer";
+import { RepoBreakdown } from "@/components/repo-breakdown";
 import { ExportButton } from "@/components/export-button";
 import { ShareButton } from "@/components/share-button";
 import { fetchCommits } from "@/app/actions/commits";
@@ -240,6 +241,14 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+      {/* Repo Breakdown Section */}
+      {selectedRepos.length > 0 && (
+        <RepoBreakdown
+          selectedRepos={selectedRepos}
+          dateRange={dateRange}
+          repositories={repositories}
+        />
+      )}
     </div>
   );
 }
