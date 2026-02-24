@@ -57,12 +57,12 @@ CommitEvent {
 
 Use these Claude Code commands for common workflows:
 
-| Command | Purpose |
-|---------|---------|
-| `/prime` | Understand project structure |
-| `/plan [task]` | Create implementation plan |
-| `/team query="[feature]"` | Multi-agent code analysis |
-| `/reflection` | Reflect on development decisions |
+| Command                   | Purpose                          |
+| ------------------------- | -------------------------------- |
+| `/prime`                  | Understand project structure     |
+| `/plan [task]`            | Create implementation plan       |
+| `/team query="[feature]"` | Multi-agent code analysis        |
+| `/reflection`             | Reflect on development decisions |
 
 ## Ralph Agent
 
@@ -73,11 +73,39 @@ This project uses the Ralph autonomous agent system. When working as a Ralph age
 3. Work on one user story at a time
 4. Run quality checks before committing
 5. Update `AGENTS.md` files when discovering reusable patterns
-6. For frontend changes, verify in browser using `dev-browser` skill
+6. For frontend changes, verify in browser using `agent-browser` skill
+
+## Dev Agent Authentication
+
+In development (`NODE_ENV=development`), a CredentialsProvider bypasses GitHub OAuth for headless agent workflows.
+
+**Endpoint:** `POST /api/auth/callback/dev-credentials`
+
+**Credentials:**
+- Username: `admin`
+- Password: `test1234`
+
+**Requirement:** `GITHUB_TOKEN` must be set in your environment (see `.env.example`). The token is used as the GitHub access token for API calls made during the dev session.
+
+**Programmatic login example (curl):**
+
+```bash
+# 1. Fetch the CSRF token
+CSRF=$(curl -s http://localhost:3000/api/auth/csrf | jq -r '.csrfToken')
+
+# 2. Authenticate and store session cookie
+curl -s -c cookies.txt -L \
+  -X POST http://localhost:3000/api/auth/callback/dev-credentials \
+  -d "username=admin&password=test1234&csrfToken=$CSRF"
+
+# 3. Use cookies.txt for subsequent authenticated requests
+curl -s -b cookies.txt http://localhost:3000/api/some-protected-route
+```
 
 ## Non-Goals
 
 The following are explicitly out of scope:
+
 - Code quality analysis
 - Lines of code metrics
 - AI judgment or scoring
