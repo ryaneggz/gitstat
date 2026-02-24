@@ -3,6 +3,13 @@ import type { NextAuthOptions, Session } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+if (process.env.NODE_ENV !== "production" && !process.env.GITHUB_TOKEN) {
+  throw new Error(
+    "GITHUB_TOKEN is required in development mode. " +
+      "See gitstat-app/.example.env for setup instructions."
+  );
+}
+
 const providers: NextAuthOptions["providers"] = [
   GitHubProvider({
     clientId: process.env.GITHUB_ID ?? "",
