@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import html2canvas from "html2canvas";
+import { useSession } from "next-auth/react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, Loader2 } from "lucide-react";
+import {
+  ImageIcon,
+  Loader2,
+  Download,
+  Copy,
+  Check,
+} from "lucide-react";
+import { toast } from "sonner";
 import type { Commit, Repository } from "@/lib/github";
 import type { DateRangeState } from "@/components/date-range-picker";
 import { toGitHubDateRange } from "@/components/date-range-picker";
@@ -63,6 +72,7 @@ export function SharePreview({
   dateRange,
   repositories,
 }: SharePreviewProps) {
+  const { data: session } = useSession();
   const [open, setOpen] = React.useState(false);
   const [template, setTemplate] = React.useState<ShareTemplate>("stats-card");
   const [platform, setPlatform] = React.useState<SharePlatform>("linkedin");
@@ -71,7 +81,13 @@ export function SharePreview({
     new Set()
   );
   const [fetchingExtra, setFetchingExtra] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   const fetchedDepsRef = React.useRef<string>("");
+  const previewRef = React.useRef<HTMLDivElement>(null);
+
+  const userName = session?.user?.name ?? undefined;
+  const userImage = session?.user?.image ?? undefined;
 
   // Commit-based metrics (always available from parent)
   const commitMetrics = React.useMemo((): ShareMetric[] => {
@@ -214,6 +230,109 @@ export function SharePreview({
     setSelectedKeys(next);
   };
 
+  /** Capture the preview element as a canvas at the target platform dimensions */
+  const captureImage = async (): Promise<HTMLCanvasElement> => {
+    if (!previewRef.current) {
+      throw new Error("Preview element not found");
+    }
+
+    const canvas = await html2canvas(previewRef.current, {
+      backgroundColor: null,
+      scale: 2,
+      logging: false,
+      useCORS: true,
+    });
+
+    // Create a final canvas at exact platform dimensions
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = platformConfig.width;
+    exportCanvas.height = platformConfig.height;
+
+    const ctx = exportCanvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get canvas context");
+    }
+
+    // Draw captured content scaled to fill the platform dimensions
+    ctx.drawImage(canvas, 0, 0, platformConfig.width, platformConfig.height);
+
+    return exportCanvas;
+  };
+
+  const handleDownload = async () => {
+    setExporting(true);
+    try {
+      const canvas = await captureImage();
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `gitstat-${template}-${platform}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      toast.success("Image downloaded", {
+        description: `${platformConfig.width}x${platformConfig.height} PNG saved`,
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Download failed", {
+        description:
+          error instanceof Error ? error.message : "An unexpected error occurred",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    setExporting(true);
+    try {
+      const canvas = await captureImage();
+
+      // Try modern clipboard API first
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof ClipboardItem !== "undefined"
+      ) {
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((b) => {
+            if (b) resolve(b);
+            else reject(new Error("Failed to create image blob"));
+          }, "image/png");
+        });
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast.success("Copied to clipboard", {
+          description: "Image ready to paste",
+        });
+      } else {
+        // Fallback: download the file instead
+        const dataUrl = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.download = `gitstat-${template}-${platform}.png`;
+        link.href = dataUrl;
+        link.click();
+
+        toast.info("Clipboard not supported", {
+          description: "Image downloaded instead",
+        });
+      }
+    } catch (error) {
+      console.error("Copy error:", error);
+      toast.error("Copy failed", {
+        description:
+          error instanceof Error ? error.message : "An unexpected error occurred",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -235,17 +354,24 @@ export function SharePreview({
           <div className="space-y-3">
             <p className="text-sm font-medium">Preview</p>
             <div
+              ref={previewRef}
               className="overflow-hidden rounded-lg border"
               style={{
                 aspectRatio: `${platformConfig.width} / ${platformConfig.height}`,
               }}
             >
               {template === "stats-card" ? (
-                <StatsCardPreview metrics={visibleMetrics} />
+                <StatsCardPreview
+                  metrics={visibleMetrics}
+                  userName={userName}
+                  userImage={userImage}
+                />
               ) : (
                 <ChartSnapshotPreview
                   metrics={visibleMetrics}
                   chartData={chartData}
+                  userName={userName}
+                  userImage={userImage}
                 />
               )}
             </div>
@@ -325,6 +451,37 @@ export function SharePreview({
                 </div>
               )}
             </div>
+
+            {/* Export Actions */}
+            <div className="space-y-2 pt-2 border-t">
+              <Button
+                className="w-full"
+                onClick={handleDownload}
+                disabled={exporting}
+              >
+                {exporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download PNG
+              </Button>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={handleCopyToClipboard}
+                disabled={exporting}
+              >
+                {copied ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : exporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
+                {copied ? "Copied!" : "Copy to Clipboard"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -333,12 +490,37 @@ export function SharePreview({
 }
 
 /** Stats Card template — dark card with metric grid */
-function StatsCardPreview({ metrics }: { metrics: ShareMetric[] }) {
+function StatsCardPreview({
+  metrics,
+  userName,
+  userImage,
+}: {
+  metrics: ShareMetric[];
+  userName?: string;
+  userImage?: string;
+}) {
   return (
     <div className="flex h-full w-full flex-col justify-between bg-zinc-950 p-[6%] text-white">
-      <div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[3%]">
+          {userImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={userImage}
+              alt=""
+              className="h-[10%] aspect-square rounded-full"
+              style={{ height: "2em" }}
+              crossOrigin="anonymous"
+            />
+          )}
+          <div>
+            {userName && (
+              <p className="text-sm font-semibold leading-tight">{userName}</p>
+            )}
+            <p className="text-xs text-zinc-500">Developer Productivity</p>
+          </div>
+        </div>
         <p className="text-lg font-bold tracking-tight">GitStat</p>
-        <p className="text-xs text-zinc-500">Developer Productivity</p>
       </div>
 
       <div className="grid grid-cols-2 gap-x-[6%] gap-y-[4%] sm:grid-cols-3">
@@ -361,9 +543,13 @@ function StatsCardPreview({ metrics }: { metrics: ShareMetric[] }) {
 function ChartSnapshotPreview({
   metrics,
   chartData,
+  userName,
+  userImage,
 }: {
   metrics: ShareMetric[];
   chartData: ChartDataPoint[];
+  userName?: string;
+  userImage?: string;
 }) {
   const svgPoints = React.useMemo(() => {
     if (chartData.length === 0) return "";
@@ -385,9 +571,26 @@ function ChartSnapshotPreview({
 
   return (
     <div className="flex h-full w-full flex-col justify-between bg-zinc-950 p-[6%] text-white">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[3%]">
+          {userImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={userImage}
+              alt=""
+              className="aspect-square rounded-full"
+              style={{ height: "2em" }}
+              crossOrigin="anonymous"
+            />
+          )}
+          <div>
+            {userName && (
+              <p className="text-sm font-semibold leading-tight">{userName}</p>
+            )}
+            <p className="text-xs text-zinc-500">Commit Timeline</p>
+          </div>
+        </div>
         <p className="text-lg font-bold tracking-tight">GitStat</p>
-        <p className="text-xs text-zinc-500">Commit Timeline</p>
       </div>
 
       <div className="flex-1 py-[3%]">
