@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="gitstat-app"
+
+echo "==> Running lint..."
+cd "$APP_DIR"
+npm run lint
+
+# Uncomment when a test runner is configured:
+# echo "==> Running tests..."
+# npm run test
+
+echo "==> Pre-commit checks passed."

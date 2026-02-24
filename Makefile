@@ -1,7 +1,11 @@
 # GitStat Makefile
 
 # Frontend commands
-.PHONY: install dev build test lint format archive
+.PHONY: install dev build test lint format archive hooks
+
+hooks:
+	git config core.hooksPath .githooks
+	@echo "Git hooks installed (.githooks/)"
 
 MAX_ITER ?= 100
 ralph.loop:
