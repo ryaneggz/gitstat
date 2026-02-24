@@ -3,6 +3,9 @@
 # Frontend commands
 .PHONY: install dev build test lint format archive
 
+ralph.loop:
+	bash .ralph/ralph.sh 50
+
 install:
 	cd gitstat && npm install
 
