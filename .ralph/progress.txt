@@ -5,6 +5,10 @@ Started: Mon Feb 23 20:32:14 MST 2026
 - The `dev:agent` script in `gitstat-app/package.json` sets `NEXTAUTH_URL=http://localhost:3080` inline before `next dev -p 3080` — this is how port overrides work for NextAuth
 - NextAuth redirect behavior is controlled by the `NEXTAUTH_URL` env var; it must match the dev server port
 - JWT decryption errors on first load are stale cookie artifacts, not real issues
+- `NEXTAUTH_SECRET` MUST be set for server-side `getServerSession()` to work — without it, JWT sessions can't be decrypted server-side even though client-side session fetch works
+- The `dev:agent` script uses `${NEXTAUTH_SECRET:-dev-agent-secret}` to provide a fallback secret for headless agent workflows
+- When testing auth in browser, always clear cookies first to avoid stale JWT tokens from previous server instances
+- The dashboard layout (`src/app/dashboard/layout.tsx`) uses server-side `getServerSession()` and redirects to `/login` if null
 ---
 
 ## 2026-02-23 - US-001
@@ -15,4 +19,16 @@ Started: Mon Feb 23 20:32:14 MST 2026
   - The dev:agent script was already correctly configured in a prior iteration
   - Use `curl -s -o /dev/null -w "%{http_code}"` to quickly verify server responses
   - Browser verification with dev-browser skill confirms full page load
+---
+
+## 2026-02-23 - US-002
+- What was implemented: Added `NEXTAUTH_SECRET` fallback to `dev:agent` npm script so server-side sessions work without manual `.env.local` setup
+- Files changed: `gitstat-app/package.json` (updated dev:agent script)
+- Key fix: `"dev:agent": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-agent-secret} NEXTAUTH_URL=http://localhost:3080 next dev -p 3080"`
+- Browser verified: clicking "Dev Agent Login" on http://localhost:3080/login redirects to http://localhost:3080/dashboard
+- **Learnings for future iterations:**
+  - Client-side session (via `/api/auth/session`) can work while server-side `getServerSession()` fails — they use different cookie/JWT handling
+  - The root cause of failed redirects was: login succeeds → redirect to /dashboard → server-side `getServerSession()` returns null → redirect back to /login (infinite loop)
+  - Always clear browser cookies between server restarts when testing auth flows
+  - The `signIn` function from next-auth/react handles credentials flow: POST to callback → get `{url: "..."}` JSON → `window.location.href = url`
 ---

@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "dev:agent": "next dev -p 3080",
+        "dev:agent": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-agent-secret} NEXTAUTH_URL=http://localhost:3080 next dev -p 3080",
         "build": "next build",
         "start": "next start",
         "lint": "eslint"
