@@ -10,8 +10,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Commit } from "@/lib/github";
-import { format, parseISO, differenceInMonths } from "date-fns";
+import {
+  format,
+  parseISO,
+  differenceInMonths,
+  startOfISOWeek,
+  startOfMonth,
+} from "date-fns";
+
+export type TimeAggregation = "daily" | "weekly" | "monthly";
 
 interface TimelineChartProps {
   commits: Commit[];
@@ -25,10 +34,46 @@ interface ChartDataPoint {
 }
 
 /**
- * Transforms raw commits into cumulative chart data points
- * Groups commits by date and calculates running total
+ * Returns the bucket key for a given date based on aggregation level
  */
-function transformCommitsToChartData(commits: Commit[]): ChartDataPoint[] {
+function getBucketKey(dateStr: string, aggregation: TimeAggregation): string {
+  const date = parseISO(dateStr);
+  switch (aggregation) {
+    case "daily":
+      return format(date, "yyyy-MM-dd");
+    case "weekly":
+      return format(startOfISOWeek(date), "yyyy-MM-dd");
+    case "monthly":
+      return format(startOfMonth(date), "yyyy-MM-dd");
+  }
+}
+
+/**
+ * Returns a human-readable label for a bucket key
+ */
+function formatBucketLabel(
+  dateStr: string,
+  aggregation: TimeAggregation
+): string {
+  const date = parseISO(dateStr);
+  switch (aggregation) {
+    case "daily":
+      return format(date, "MMM d, yyyy");
+    case "weekly":
+      return `Week of ${format(date, "MMM d, yyyy")}`;
+    case "monthly":
+      return format(date, "MMMM yyyy");
+  }
+}
+
+/**
+ * Transforms raw commits into cumulative chart data points
+ * Groups commits by the specified aggregation interval
+ */
+function transformCommitsToChartData(
+  commits: Commit[],
+  aggregation: TimeAggregation
+): ChartDataPoint[] {
   if (commits.length === 0) {
     return [];
   }
@@ -38,27 +83,27 @@ function transformCommitsToChartData(commits: Commit[]): ChartDataPoint[] {
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
-  // Group commits by date (day granularity)
-  const commitsByDate = new Map<string, number>();
+  // Group commits by bucket
+  const commitsByBucket = new Map<string, number>();
 
   for (const commit of sortedCommits) {
-    const dateKey = format(parseISO(commit.date), "yyyy-MM-dd");
-    commitsByDate.set(dateKey, (commitsByDate.get(dateKey) || 0) + 1);
+    const bucketKey = getBucketKey(commit.date, aggregation);
+    commitsByBucket.set(bucketKey, (commitsByBucket.get(bucketKey) || 0) + 1);
   }
 
   // Convert to array sorted by date
-  const dates = Array.from(commitsByDate.keys()).sort();
+  const buckets = Array.from(commitsByBucket.keys()).sort();
 
   // Build cumulative data points
   let cumulativeCount = 0;
   const chartData: ChartDataPoint[] = [];
 
-  for (const date of dates) {
-    cumulativeCount += commitsByDate.get(date) || 0;
+  for (const bucket of buckets) {
+    cumulativeCount += commitsByBucket.get(bucket) || 0;
     chartData.push({
-      date,
+      date: bucket,
       cumulativeCount,
-      formattedDate: format(parseISO(date), "MMM d, yyyy"),
+      formattedDate: formatBucketLabel(bucket, aggregation),
     });
   }
 
@@ -66,9 +111,16 @@ function transformCommitsToChartData(commits: Commit[]): ChartDataPoint[] {
 }
 
 /**
- * Determines the appropriate date format based on the date range
+ * Determines the appropriate date format based on the date range and aggregation
  */
-function getDateFormat(data: ChartDataPoint[]): string {
+function getDateFormat(
+  data: ChartDataPoint[],
+  aggregation: TimeAggregation
+): string {
+  if (aggregation === "monthly") {
+    return "MMM yyyy";
+  }
+
   if (data.length < 2) {
     return "MMM d";
   }
@@ -77,15 +129,10 @@ function getDateFormat(data: ChartDataPoint[]): string {
   const lastDate = parseISO(data[data.length - 1].date);
   const monthsDiff = differenceInMonths(lastDate, firstDate);
 
-  // For ranges over a year, show month and year
   if (monthsDiff > 12) {
     return "MMM yyyy";
   }
-  // For ranges over 2 months, show month and day
-  if (monthsDiff > 2) {
-    return "MMM d";
-  }
-  // For shorter ranges, show day
+
   return "MMM d";
 }
 
@@ -116,14 +163,17 @@ function CustomTooltip({
 }
 
 export function TimelineChart({ commits, className }: TimelineChartProps) {
+  const [aggregation, setAggregation] =
+    React.useState<TimeAggregation>("daily");
+
   const chartData = React.useMemo(
-    () => transformCommitsToChartData(commits),
-    [commits]
+    () => transformCommitsToChartData(commits, aggregation),
+    [commits, aggregation]
   );
 
   const dateFormat = React.useMemo(
-    () => getDateFormat(chartData),
-    [chartData]
+    () => getDateFormat(chartData, aggregation),
+    [chartData, aggregation]
   );
 
   if (chartData.length === 0) {
@@ -135,51 +185,66 @@ export function TimelineChart({ commits, className }: TimelineChartProps) {
   }
 
   return (
-    <div className={`h-[400px] w-full rounded-lg border bg-card p-4 ${className || ""}`}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="var(--border)"
-            vertical={false}
-          />
-          <XAxis
-            dataKey="date"
-            tickFormatter={(value) => format(parseISO(value), dateFormat)}
-            stroke="var(--muted-foreground)"
-            tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
-            tickLine={{ stroke: "var(--border)" }}
-            axisLine={{ stroke: "var(--border)" }}
-            interval="preserveStartEnd"
-            minTickGap={50}
-          />
-          <YAxis
-            stroke="var(--muted-foreground)"
-            tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
-            tickLine={{ stroke: "var(--border)" }}
-            axisLine={{ stroke: "var(--border)" }}
-            allowDecimals={false}
-            width={60}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="monotone"
-            dataKey="cumulativeCount"
-            stroke="var(--chart-1)"
-            strokeWidth={2}
-            dot={chartData.length <= 30}
-            activeDot={{
-              r: 6,
-              fill: "var(--chart-1)",
-              stroke: "var(--background)",
-              strokeWidth: 2,
-            }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div
+      className={`w-full rounded-lg border bg-card p-4 ${className || ""}`}
+    >
+      <Tabs
+        value={aggregation}
+        onValueChange={(v) => setAggregation(v as TimeAggregation)}
+        className="mb-4"
+      >
+        <TabsList>
+          <TabsTrigger value="daily">Daily</TabsTrigger>
+          <TabsTrigger value="weekly">Weekly</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <div className="h-[400px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chartData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--border)"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(value) => format(parseISO(value), dateFormat)}
+              stroke="var(--muted-foreground)"
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              tickLine={{ stroke: "var(--border)" }}
+              axisLine={{ stroke: "var(--border)" }}
+              interval="preserveStartEnd"
+              minTickGap={50}
+            />
+            <YAxis
+              stroke="var(--muted-foreground)"
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              tickLine={{ stroke: "var(--border)" }}
+              axisLine={{ stroke: "var(--border)" }}
+              allowDecimals={false}
+              width={60}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Line
+              type="monotone"
+              dataKey="cumulativeCount"
+              stroke="var(--chart-1)"
+              strokeWidth={2}
+              dot={chartData.length <= 30}
+              activeDot={{
+                r: 6,
+                fill: "var(--chart-1)",
+                stroke: "var(--background)",
+                strokeWidth: 2,
+              }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
