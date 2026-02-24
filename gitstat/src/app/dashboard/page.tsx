@@ -19,6 +19,7 @@ import {
 import { RepoBreakdown } from "@/components/repo-breakdown";
 import { ExportButton } from "@/components/export-button";
 import { ShareButton } from "@/components/share-button";
+import { SharePreview } from "@/components/share-preview";
 import { fetchCommits } from "@/app/actions/commits";
 import { fetchRepositories } from "@/app/actions/repositories";
 import type { Commit, Repository } from "@/lib/github";
@@ -205,6 +206,12 @@ export default function DashboardPage() {
           <CardTitle>Commit Timeline</CardTitle>
           {selectedRepos.length > 0 && commits.length > 0 && !loading && (
             <div className="flex items-center gap-2">
+              <SharePreview
+                commits={commits}
+                selectedRepos={selectedRepos}
+                dateRange={dateRange}
+                repositories={repositories}
+              />
               <ShareButton selectedRepos={selectedRepos} dateRange={dateRange} commits={commits} />
               <ExportButton targetRef={chartRef} filename="gitstat-chart" />
             </div>
