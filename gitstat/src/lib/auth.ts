@@ -6,7 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 if (process.env.NODE_ENV !== "production" && !process.env.GITHUB_TOKEN) {
   throw new Error(
     "GITHUB_TOKEN is required in development mode. " +
-      "See gitstat-app/.example.env for setup instructions."
+      "See gitstat/.example.env for setup instructions."
   );
 }
 

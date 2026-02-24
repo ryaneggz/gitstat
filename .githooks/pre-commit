@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="gitstat-app"
+APP_DIR="gitstat"
 
 echo "==> Running lint..."
 cd "$APP_DIR"

@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: gitstat-app
+        working-directory: gitstat
 
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: gitstat-app/package-lock.json
+          cache-dependency-path: gitstat/package-lock.json
 
       - run: npm ci
 
